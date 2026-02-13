@@ -9,26 +9,39 @@ struct ContentView: View {
   @State private var isDropTargeted = false
   @State private var seekPosition: Double = 0
   @State private var isSeeking = false
+  @State private var isFullscreen = false
 
   var body: some View {
-    VStack(spacing: 0) {
-      ZStack {
-        PlaybackEngineView(engine: viewModel.engine)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(Color.black)
-
-        if viewModel.currentURL == nil {
-          emptyStateView
-        }
+    HStack(spacing: 0) {
+      VStack(spacing: 0) {
+        playerSurface
+        controlsView
       }
-      .overlay(alignment: .topLeading) {
-        if isDropTargeted {
-          dropIndicator
-        }
-      }
-      .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-      controlsView
+      if !isFullscreen {
+        Divider()
+
+        RecentFilesPanel(
+          entries: viewModel.recentEntries,
+          currentFilePath: viewModel.currentFilePath,
+          onSelect: viewModel.openRecent
+        )
+        .transition(.move(edge: .trailing))
+      }
+    }
+    .animation(.easeInOut(duration: 0.2), value: isFullscreen)
+    .onAppear {
+      syncFullscreenState()
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
+      isFullscreen = true
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
+      isFullscreen = false
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+      syncFullscreenState()
     }
     .onReceive(NotificationCenter.default.publisher(for: AppOpenBus.didRequestOpenURLs)) { notification in
       let urls = AppOpenBus.urls(from: notification)
@@ -43,7 +56,69 @@ struct ContentView: View {
       guard !isSeeking else { return }
       seekPosition = min(seekPosition, max(newValue, 0))
     }
-    .frame(minWidth: 960, minHeight: 600)
+    .frame(minWidth: 1080, minHeight: 640)
+  }
+
+  private var playerSurface: some View {
+    ZStack {
+      PlaybackEngineView(engine: viewModel.engine)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+
+      if viewModel.currentURL == nil {
+        emptyStateView
+      }
+    }
+    .overlay(alignment: .topLeading) {
+      if isDropTargeted {
+        dropIndicator
+      }
+    }
+    .overlay(alignment: .bottom) {
+      subtitleOverlay
+    }
+    .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
+    .contextMenu {
+      Button("Open...") {
+        viewModel.openPanel()
+      }
+
+      Divider()
+
+      Button("Add Subtitle...") {
+        viewModel.openSubtitlePanel()
+      }
+
+      if viewModel.hasSubtitleTrack {
+        Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
+          viewModel.subtitlesEnabled.toggle()
+        }
+
+        Button("Remove Subtitle") {
+          viewModel.removeSubtitleTrack()
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var subtitleOverlay: some View {
+    if
+      let subtitleText = viewModel.subtitleText,
+      !subtitleText.isEmpty,
+      viewModel.currentURL != nil
+    {
+      Text(subtitleText)
+        .font(.system(size: 24, weight: .semibold, design: .rounded))
+        .foregroundStyle(.white)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.black.opacity(0.68), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 28)
+        .padding(.bottom, 26)
+        .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 2)
+    }
   }
 
   private var emptyStateView: some View {
@@ -116,6 +191,28 @@ struct ContentView: View {
         Button("Open...") {
           viewModel.openPanel()
         }
+
+        Menu {
+          Button("Add Subtitle...") {
+            viewModel.openSubtitlePanel()
+          }
+
+          if viewModel.hasSubtitleTrack {
+            Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
+              viewModel.subtitlesEnabled.toggle()
+            }
+
+            Button("Remove Subtitle") {
+              viewModel.removeSubtitleTrack()
+            }
+          } else {
+            Button("No subtitle loaded") {
+            }
+            .disabled(true)
+          }
+        } label: {
+          Label("Subtitles", systemImage: viewModel.hasSubtitleTrack ? "captions.bubble.fill" : "captions.bubble")
+        }
       }
 
       HStack(spacing: 10) {
@@ -175,6 +272,10 @@ struct ContentView: View {
 
   private func toggleFullscreen() {
     NSApplication.shared.keyWindow?.toggleFullScreen(nil)
+  }
+
+  private func syncFullscreenState() {
+    isFullscreen = NSApplication.shared.keyWindow?.styleMask.contains(.fullScreen) ?? false
   }
 
   private func formattedTime(_ seconds: TimeInterval) -> String {

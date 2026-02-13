@@ -3,12 +3,14 @@ import Foundation
 
 final class AVFoundationPlaybackEngine: PlaybackEngine {
   var stateDidChange: ((PlaybackState) -> Void)?
+  var playbackDidFinish: (() -> Void)?
 
   private let player: AVPlayer
   private let playerView: AVPlayerView
 
   private var timeObserver: Any?
   private var statusObservation: NSKeyValueObservation?
+  private var playbackEndObserver: NSObjectProtocol?
 
   private var preferredRate: Float = 1.0
   private var currentVolume: Float = 1.0
@@ -31,6 +33,11 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
     if let timeObserver {
       player.removeTimeObserver(timeObserver)
     }
+
+    if let playbackEndObserver {
+      NotificationCenter.default.removeObserver(playbackEndObserver)
+    }
+
     statusObservation?.invalidate()
   }
 
@@ -108,6 +115,23 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
       options: [.initial, .new]
     ) { [weak self] _, _ in
       self?.emitState()
+    }
+
+    playbackEndObserver = NotificationCenter.default.addObserver(
+      forName: .AVPlayerItemDidPlayToEndTime,
+      object: nil,
+      queue: .main
+    ) { [weak self] notification in
+      guard
+        let self,
+        let item = notification.object as? AVPlayerItem,
+        item == self.player.currentItem
+      else {
+        return
+      }
+
+      self.emitState()
+      self.playbackDidFinish?()
     }
   }
 
