@@ -25,3 +25,23 @@ targets:
         LSMinimumSystemVersion: "13.0"
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: MPEG-4 Video
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - public.mpeg-4
+          - CFBundleTypeName: Matroska Video
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.firecore.fileformat.mkv
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.firecore.fileformat.mkv
+            UTTypeConformsTo:
+              - public.movie
+              - public.audiovisual-content
+            UTTypeDescription: Matroska Video
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - mkv
+              public.mime-type:
+                - video/x-matroska
