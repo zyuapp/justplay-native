@@ -19,6 +19,7 @@
 		7DBFBB90CE7B9D4D0C8C5B26 /* RecentPlaybackEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E49E8946E2E1203F4F6D4EE /* RecentPlaybackEntry.swift */; };
 		7E3DEF84CF535C71E8AD1E61 /* PlaybackEngineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8AB22BE4B7208D0CE4CE17 /* PlaybackEngineView.swift */; };
 		8499534414EF206203C4CF41 /* AVFoundationPlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD863B049B03E0588B3E562 /* AVFoundationPlaybackEngine.swift */; };
+		8F2DF426446282919CD76968 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DBB037F24B98F8C5176CF01D /* Assets.xcassets */; };
 		989F08635834A1D29EB57961 /* PlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1F582AF6C17D350FA6F56B /* PlaybackState.swift */; };
 		A05AE1536231007CBA0BA4F3 /* RecentPlaybackStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C60CF40DFCF37D1160BD8F /* RecentPlaybackStore.swift */; };
 		AF116CD0775E1BC5DE97D71C /* AppOpenBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851F6C378CC53565D461318F /* AppOpenBus.swift */; };
@@ -56,6 +57,7 @@
 		9EEB764BFDBE9F88B490898A /* JustPlayNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustPlayNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA8AB22BE4B7208D0CE4CE17 /* PlaybackEngineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackEngineView.swift; sourceTree = "<group>"; };
 		D77848B7E26FE6B14FCBDD0D /* PlayerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViewModel.swift; sourceTree = "<group>"; };
+		DBB037F24B98F8C5176CF01D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DCD863B049B03E0588B3E562 /* AVFoundationPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVFoundationPlaybackEngine.swift; sourceTree = "<group>"; };
 		E193BDD6260977714A8910AE /* PlaybackEngineFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackEngineFactory.swift; sourceTree = "<group>"; };
 		E216CF9C8AB75CE17B34A575 /* VLCPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLCPlaybackEngine.swift; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@
 			isa = PBXGroup;
 			children = (
 				851F6C378CC53565D461318F /* AppOpenBus.swift */,
+				DBB037F24B98F8C5176CF01D /* Assets.xcassets */,
 				007EE3686B226AB77A2E4092 /* ContentView.swift */,
 				03E45962A885B68F20CD371C /* DropURLLoader.swift */,
 				6B06DA0AAAF690E3C0E1D43A /* Info.plist */,
@@ -159,6 +162,7 @@
 			buildConfigurationList = 15D153C4F40B28E52E712906 /* Build configuration list for PBXNativeTarget "JustPlayNative" */;
 			buildPhases = (
 				055C3DF273DD6931052E5E7C /* Sources */,
+				611986BE492F9A767BFCD438 /* Resources */,
 				6D7EEE6B572075723063971B /* Frameworks */,
 				B55B704412B2B0CDD1A5B79B /* Embed Frameworks */,
 			);
@@ -200,6 +204,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		611986BE492F9A767BFCD438 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2DF426446282919CD76968 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		055C3DF273DD6931052E5E7C /* Sources */ = {
