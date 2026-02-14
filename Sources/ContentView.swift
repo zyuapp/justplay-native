@@ -11,7 +11,6 @@ struct ContentView: View {
   @State private var isSeeking = false
   @State private var isFullscreen = false
   @State private var isHoveringFullscreenControlsRegion = false
-  @State private var isSubtitleSearchModalPresented = false
   @State private var keyboardMonitor: Any? = nil
 
   var body: some View {
@@ -88,31 +87,6 @@ struct ContentView: View {
     .onChange(of: viewModel.playbackState.duration) { newValue in
       guard !isSeeking else { return }
       seekPosition = min(seekPosition, max(newValue, 0))
-    }
-    .sheet(isPresented: $isSubtitleSearchModalPresented) {
-      SubtitleSearchPanel(
-        apiKey: $viewModel.openSubtitlesAPIKey,
-        query: $viewModel.subtitleSearchQuery,
-        languageCode: $viewModel.subtitleSearchLanguageCode,
-        languageOptions: viewModel.subtitleLanguageOptions,
-        isConfigured: viewModel.isSubtitleAPIConfigured,
-        hasSubtitleTrack: viewModel.hasSubtitleTrack,
-        subtitlesEnabled: viewModel.subtitlesEnabled,
-        isLoading: viewModel.subtitleSearchIsLoading,
-        statusMessage: viewModel.subtitleSearchMessage,
-        results: viewModel.subtitleSearchResults,
-        activeDownloadID: viewModel.subtitleDownloadInFlightID,
-        availableTracks: viewModel.availableSubtitleTracks,
-        selectedTrackID: viewModel.selectedSubtitleTrackID,
-        onSaveAPIKey: viewModel.saveOpenSubtitlesAPIKey,
-        onAddSubtitle: viewModel.openSubtitlePanel,
-        onSelectTrack: viewModel.selectSubtitleTrack,
-        onToggleSubtitles: { viewModel.subtitlesEnabled.toggle() },
-        onRemoveSubtitle: viewModel.removeSubtitleTrack,
-        onUseCurrentFileName: viewModel.useCurrentFileNameForSubtitleSearch,
-        onSearch: viewModel.searchSubtitles,
-        onDownload: viewModel.downloadSubtitle
-      )
     }
     .frame(minWidth: 1080, minHeight: 640)
   }
@@ -293,7 +267,7 @@ struct ContentView: View {
         }
 
         Button {
-          presentSubtitleSearchModal()
+          viewModel.openSubtitlePanel()
         } label: {
           Label("Subtitles", systemImage: viewModel.hasSubtitleTrack ? "captions.bubble.fill" : "captions.bubble")
         }
@@ -474,11 +448,6 @@ struct ContentView: View {
 
   private func currentWindow() -> NSWindow? {
     NSApplication.shared.mainWindow ?? NSApplication.shared.keyWindow
-  }
-
-  private func presentSubtitleSearchModal() {
-    viewModel.useCurrentFileNameForSubtitleSearch()
-    isSubtitleSearchModalPresented = true
   }
 
   private func formattedTime(_ seconds: TimeInterval) -> String {

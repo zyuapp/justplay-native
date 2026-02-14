@@ -12,13 +12,6 @@ final class PlayerViewModel: ObservableObject {
   @Published private(set) var activeSubtitleFileName: String?
   @Published private(set) var availableSubtitleTracks: [SubtitleTrackOption] = []
   @Published private(set) var selectedSubtitleTrackID: String?
-  @Published var openSubtitlesAPIKey: String
-  @Published var subtitleSearchQuery = ""
-  @Published var subtitleSearchLanguageCode = SubtitleLanguageOption.anyCode
-  @Published private(set) var subtitleSearchResults: [RemoteSubtitleSearchResult] = []
-  @Published private(set) var subtitleSearchMessage: String?
-  @Published private(set) var subtitleSearchIsLoading = false
-  @Published private(set) var subtitleDownloadInFlightID: Int?
 
   @Published var subtitlesEnabled = true {
     didSet {
@@ -54,17 +47,9 @@ final class PlayerViewModel: ObservableObject {
     selectedSubtitleTrackID != nil
   }
 
-  var isSubtitleAPIConfigured: Bool {
-    !openSubtitlesAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-  }
-
   private let recentPlaybackStore: RecentPlaybackStore
-  private var subtitleClient: OpenSubtitlesClient
   private let supportedFileExtensions = Set(["mp4", "m4v", "mkv"])
   private let maxRecentEntries = 50
-  private let openSubtitlesAPIKeyDefaultsKey = "OpenSubtitlesAPIKey"
-  private let subtitleSearchLanguageDefaultsKey = "SubtitleSearchLanguageCode"
-  private let downloadedSubtitleDirectoryName = "downloaded-subtitles"
 
   private var loadedSubtitleTracks: [LoadedSubtitleTrack] = []
   private var subtitleCues: [SubtitleCue] = []
@@ -81,22 +66,7 @@ final class PlayerViewModel: ObservableObject {
     self.engine = engine
     self.recentPlaybackStore = recentPlaybackStore
 
-    let storedKey = UserDefaults.standard.string(forKey: openSubtitlesAPIKeyDefaultsKey)
-      ?? ProcessInfo.processInfo.environment["OPEN_SUBTITLES_API_KEY"]
-      ?? ""
-    let storedSubtitleLanguage = UserDefaults.standard.string(forKey: subtitleSearchLanguageDefaultsKey)
-      ?? SubtitleLanguageOption.anyCode
-
-    openSubtitlesAPIKey = storedKey
-    subtitleSearchLanguageCode = SubtitleLanguageOption.supportedCodes.contains(storedSubtitleLanguage)
-      ? storedSubtitleLanguage
-      : SubtitleLanguageOption.anyCode
-    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: storedKey)
-
     recentEntries = recentPlaybackStore.loadEntries()
-    if !isSubtitleAPIConfigured {
-      subtitleSearchMessage = "Add your OpenSubtitles API key to enable online subtitle search."
-    }
 
     self.engine.stateDidChange = { [weak self] state in
       Task { @MainActor in
@@ -144,11 +114,6 @@ final class PlayerViewModel: ObservableObject {
 
     currentURL = normalizedURL
     currentOpenedAt = Date()
-    subtitleSearchQuery = normalizedSubtitleQuery(from: normalizedURL)
-    subtitleSearchResults = []
-    if isSubtitleAPIConfigured {
-      subtitleSearchMessage = "Search online subtitles for this video."
-    }
 
     let resumePosition = resumePosition(for: normalizedURL)
     pendingResumeSeek = resumePosition
@@ -191,10 +156,6 @@ final class PlayerViewModel: ObservableObject {
     activateSubtitleTrack(track)
   }
 
-  var subtitleLanguageOptions: [SubtitleLanguageOption] {
-    SubtitleLanguageOption.all
-  }
-
   func openSubtitlePanel() {
     let panel = NSOpenPanel()
     panel.title = "Add Subtitle"
@@ -227,96 +188,6 @@ final class PlayerViewModel: ObservableObject {
     }
 
     persistCurrentPlaybackProgress(force: true)
-  }
-
-  func saveOpenSubtitlesAPIKey() {
-    let trimmed = openSubtitlesAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    openSubtitlesAPIKey = trimmed
-
-    if trimmed.isEmpty {
-      UserDefaults.standard.removeObject(forKey: openSubtitlesAPIKeyDefaultsKey)
-      subtitleSearchResults = []
-      subtitleSearchMessage = "Add your OpenSubtitles API key to enable online subtitle search."
-    } else {
-      UserDefaults.standard.set(trimmed, forKey: openSubtitlesAPIKeyDefaultsKey)
-      subtitleSearchMessage = "API key saved."
-    }
-
-    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: trimmed)
-  }
-
-  func useCurrentFileNameForSubtitleSearch() {
-    guard let currentURL else {
-      return
-    }
-
-    subtitleSearchQuery = normalizedSubtitleQuery(from: currentURL)
-  }
-
-  func searchSubtitles() {
-    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: openSubtitlesAPIKey)
-    UserDefaults.standard.set(subtitleSearchLanguageCode, forKey: subtitleSearchLanguageDefaultsKey)
-
-    guard isSubtitleAPIConfigured else {
-      subtitleSearchMessage = "Add your OpenSubtitles API key to search subtitles online."
-      return
-    }
-
-    let query = subtitleSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !query.isEmpty else {
-      subtitleSearchMessage = "Enter a title or use the current file name."
-      subtitleSearchResults = []
-      return
-    }
-
-    subtitleSearchIsLoading = true
-    subtitleSearchMessage = "Searching subtitles..."
-    subtitleSearchResults = []
-
-    Task {
-      do {
-        let language = subtitleSearchLanguageCode == SubtitleLanguageOption.anyCode
-          ? nil
-          : subtitleSearchLanguageCode
-        let results = try await subtitleClient.searchSubtitles(query: query, language: language)
-        subtitleSearchResults = results
-        subtitleSearchIsLoading = false
-        subtitleSearchMessage = results.isEmpty ? "No subtitles found." : "Found \(results.count) subtitles."
-      } catch {
-        subtitleSearchIsLoading = false
-        subtitleSearchMessage = error.localizedDescription
-      }
-    }
-  }
-
-  func downloadSubtitle(_ result: RemoteSubtitleSearchResult) {
-    guard subtitleDownloadInFlightID == nil else {
-      return
-    }
-
-    guard let currentURL else {
-      subtitleSearchMessage = "Open a video before downloading subtitles."
-      return
-    }
-
-    subtitleDownloadInFlightID = result.id
-    subtitleSearchMessage = "Downloading \(result.fileName)..."
-
-    Task {
-      do {
-        let downloaded = try await subtitleClient.downloadSubtitle(fileID: result.fileID)
-        let savedURL = try saveDownloadedSubtitle(
-          text: downloaded.subtitleText,
-          fileName: downloaded.fileName,
-          for: currentURL
-        )
-        loadSubtitle(from: savedURL, source: .remoteDownloaded)
-        subtitleDownloadInFlightID = nil
-      } catch {
-        subtitleDownloadInFlightID = nil
-        subtitleSearchMessage = error.localizedDescription
-      }
-    }
   }
 
   func togglePlayPause() {
@@ -560,11 +431,8 @@ final class PlayerViewModel: ObservableObject {
         statusMessage = "Loaded subtitle: \(track.displayName)"
       }
 
-      if source == .remoteDownloaded {
-        subtitleSearchMessage = "Loaded subtitle: \(track.displayName)"
-      }
     } catch {
-      if source == .manual || source == .remoteDownloaded {
+      if source == .manual {
         statusMessage = "Unable to read subtitle file."
       }
     }
@@ -596,55 +464,6 @@ final class PlayerViewModel: ObservableObject {
     }
   }
 
-  private func saveDownloadedSubtitle(text: String, fileName: String, for videoURL: URL) throws -> URL {
-    let baseDirectory = try downloadedSubtitlesDirectoryURL(for: videoURL)
-    let safeName = sanitizedSubtitleFileName(fileName)
-    let outputURL = baseDirectory.appendingPathComponent("\(UUID().uuidString)-\(safeName)", isDirectory: false)
-
-    guard let data = text.data(using: .utf8) else {
-      throw SubtitleError.unreadableTrack
-    }
-
-    try data.write(to: outputURL, options: .atomic)
-    return outputURL
-  }
-
-  private func downloadedSubtitlesDirectoryURL(for videoURL: URL) throws -> URL {
-    let bundleID = Bundle.main.bundleIdentifier ?? "com.justplay.native"
-    let appSupportDirectory = try FileManager.default.url(
-      for: .applicationSupportDirectory,
-      in: .userDomainMask,
-      appropriateFor: nil,
-      create: true
-    )
-
-    let videoKey = Data(videoURL.path.utf8)
-      .base64EncodedString()
-      .replacingOccurrences(of: "/", with: "_")
-      .replacingOccurrences(of: "+", with: "-")
-      .replacingOccurrences(of: "=", with: "")
-    let directoryURL = appSupportDirectory
-      .appendingPathComponent(bundleID, isDirectory: true)
-      .appendingPathComponent(downloadedSubtitleDirectoryName, isDirectory: true)
-      .appendingPathComponent(videoKey, isDirectory: true)
-
-    try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-    return directoryURL
-  }
-
-  private func sanitizedSubtitleFileName(_ fileName: String) -> String {
-    let trimmed = fileName.trimmingCharacters(in: .whitespacesAndNewlines)
-    let fallback = "subtitle.srt"
-    guard !trimmed.isEmpty else {
-      return fallback
-    }
-
-    let forbidden = CharacterSet(charactersIn: "/:\\")
-    let sanitized = trimmed.unicodeScalars.map { forbidden.contains($0) ? "_" : String($0) }
-    let normalized = sanitized.joined()
-    return normalized.isEmpty ? fallback : normalized
-  }
-
   private func currentSubtitleSelection() -> RecentPlaybackEntry.SubtitleSelection? {
     guard
       let selectedSubtitleTrackID,
@@ -674,7 +493,7 @@ final class PlayerViewModel: ObservableObject {
     case .manual:
       return .manual
     case .remoteDownloaded:
-      return .remoteDownloaded
+      return .manual
     }
   }
 
@@ -684,8 +503,6 @@ final class PlayerViewModel: ObservableObject {
       return .autoDetected
     case .manual:
       return .manual
-    case .remoteDownloaded:
-      return .remoteDownloaded
     }
   }
 
@@ -733,20 +550,6 @@ final class PlayerViewModel: ObservableObject {
     return [.plainText]
   }
 
-  private func normalizedSubtitleQuery(from videoURL: URL) -> String {
-    let rawName = videoURL.deletingPathExtension().lastPathComponent
-    return rawName
-      .replacingOccurrences(of: ".", with: " ")
-      .replacingOccurrences(of: "_", with: " ")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-}
-
-private extension PlayerViewModel {
-  static func makeSubtitleClient(apiKey: String) -> OpenSubtitlesClient {
-    let config = OpenSubtitlesClient.Configuration.fromAPIKey(apiKey)
-    return OpenSubtitlesClient(configuration: config)
-  }
 }
 
 private extension PlayerViewModel {
@@ -761,7 +564,6 @@ private extension PlayerViewModel {
   enum SubtitleSource: String {
     case autoDetected
     case manual
-    case remoteDownloaded
 
     var displayName: String {
       switch self {
@@ -769,8 +571,6 @@ private extension PlayerViewModel {
         return "Auto"
       case .manual:
         return "Imported"
-      case .remoteDownloaded:
-        return "Downloaded"
       }
     }
   }
