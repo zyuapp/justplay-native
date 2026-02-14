@@ -6,17 +6,29 @@ struct RecentFilesPanel: View {
   let onSelect: (RecentPlaybackEntry) -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Recent")
-        .font(.title3.weight(.semibold))
+    VStack(alignment: .leading, spacing: 14) {
+      HStack {
+        Text("Recent")
+          .font(.title3.weight(.semibold))
+
+        Spacer()
+
+        Text("\(entries.count)")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 3)
+          .background(.white.opacity(0.08), in: Capsule())
+      }
 
       if entries.isEmpty {
         Text("No recent videos yet.")
           .font(.subheadline)
           .foregroundStyle(.secondary)
+          .padding(.top, 4)
       } else {
         ScrollView {
-          LazyVStack(spacing: 8) {
+          LazyVStack(spacing: 10) {
             ForEach(entries) { entry in
               Button {
                 onSelect(entry)
@@ -26,30 +38,38 @@ struct RecentFilesPanel: View {
               .buttonStyle(.plain)
             }
           }
-          .padding(.vertical, 2)
+          .padding(.vertical, 4)
         }
       }
     }
-    .padding(14)
-    .frame(width: 290)
+    .padding(16)
+    .frame(width: 320)
     .frame(maxHeight: .infinity, alignment: .topLeading)
     .background(.regularMaterial)
   }
 
-  @ViewBuilder
   private func recentRow(for entry: RecentPlaybackEntry) -> some View {
     let isCurrent = entry.filePath == currentFilePath
+    let iconColor: Color = isCurrent ? .accentColor : .secondary
+    let cardFill: Color = isCurrent ? Color.accentColor.opacity(0.2) : Color.white.opacity(0.06)
+    let cardStroke: Color = isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.07)
 
-    HStack(spacing: 10) {
+    return HStack(spacing: 10) {
       Image(systemName: "film")
         .font(.headline)
         .frame(width: 28, height: 28)
-        .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
+        .foregroundStyle(iconColor)
 
       VStack(alignment: .leading, spacing: 4) {
         Text(entry.displayName)
           .font(.subheadline.weight(.medium))
           .lineLimit(1)
+
+        if isCurrent {
+          Text("Now Playing")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+        }
 
         Text(relativeDateText(for: entry.lastOpenedAt))
           .font(.caption)
@@ -67,8 +87,12 @@ struct RecentFilesPanel: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(
       RoundedRectangle(cornerRadius: 10, style: .continuous)
-        .fill(isCurrent ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.08))
+        .fill(cardFill)
     )
+    .overlay {
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(cardStroke, lineWidth: 1)
+    }
   }
 
   private func progressDetail(for entry: RecentPlaybackEntry) -> String {

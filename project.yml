@@ -15,13 +15,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.justplay.native
-        PRODUCT_NAME: JustPlayNative
+        PRODUCT_NAME: JustPlay
     dependencies:
       - framework: Carthage/Build/VLCKit.xcframework
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleName: JustPlayNative
+        CFBundleName: JustPlay
+        CFBundleDisplayName: JustPlay
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "13.0"

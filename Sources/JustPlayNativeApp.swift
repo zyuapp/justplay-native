@@ -15,6 +15,7 @@ struct JustPlayNativeApp: App {
     WindowGroup {
       ContentView()
     }
+    .windowStyle(.hiddenTitleBar)
     .commands {
       CommandGroup(after: .newItem) {
         Button("Open...") {

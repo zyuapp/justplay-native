@@ -12,25 +12,34 @@ struct ContentView: View {
   @State private var isFullscreen = false
 
   var body: some View {
-    HStack(spacing: 0) {
-      VStack(spacing: 0) {
-        playerSurface
-        controlsView
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    ZStack {
+      backgroundLayer
 
-      if !isFullscreen {
-        Divider()
+      HStack(spacing: 0) {
+        VStack(spacing: 14) {
+          headerView
+          playerSurface
+            .frame(maxHeight: .infinity)
+          controlsView
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        RecentFilesPanel(
-          entries: viewModel.recentEntries,
-          currentFilePath: viewModel.currentFilePath,
-          onSelect: viewModel.openRecent
-        )
-        .transition(.move(edge: .trailing))
+        if !isFullscreen {
+          Divider()
+            .overlay(.white.opacity(0.08))
+
+          RecentFilesPanel(
+            entries: viewModel.recentEntries,
+            currentFilePath: viewModel.currentFilePath,
+            onSelect: viewModel.openRecent
+          )
+          .transition(.move(edge: .trailing).combined(with: .opacity))
+        }
       }
     }
-    .animation(.easeInOut(duration: 0.2), value: isFullscreen)
+    .animation(.easeInOut(duration: 0.22), value: isFullscreen)
     .onAppear {
       syncFullscreenState()
     }
@@ -69,6 +78,12 @@ struct ContentView: View {
         emptyStateView
       }
     }
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .stroke(.white.opacity(0.12), lineWidth: 1)
+    }
+    .shadow(color: .black.opacity(0.3), radius: 18, x: 0, y: 10)
     .overlay(alignment: .topLeading) {
       if isDropTargeted {
         dropIndicator
@@ -122,15 +137,15 @@ struct ContentView: View {
   }
 
   private var emptyStateView: some View {
-    VStack(spacing: 14) {
+    VStack(spacing: 12) {
       Image(systemName: "play.square.stack.fill")
         .resizable()
         .scaledToFit()
-        .frame(width: 58, height: 58)
+        .frame(width: 54, height: 54)
         .foregroundStyle(.white.opacity(0.8))
 
       Text("JustPlay")
-        .font(.title2.weight(.semibold))
+        .font(.title3.weight(.semibold))
         .foregroundStyle(.white)
 
       Text(viewModel.statusMessage)
@@ -143,16 +158,18 @@ struct ContentView: View {
       }
       .buttonStyle(.borderedProminent)
     }
-    .padding(28)
-    .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .padding(.horizontal, 28)
+    .padding(.vertical, 24)
+    .background(.black.opacity(0.52), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
 
   private var controlsView: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 12) {
       HStack(spacing: 10) {
         Button(action: viewModel.togglePlayPause) {
           Image(systemName: viewModel.playbackState.isPlaying ? "pause.fill" : "play.fill")
         }
+        .buttonStyle(.borderedProminent)
         .keyboardShortcut(.space, modifiers: [])
 
         Button(action: viewModel.skipBackward) {
@@ -165,7 +182,7 @@ struct ContentView: View {
 
         Text(formattedTime(viewModel.playbackState.currentTime))
           .font(.system(.footnote, design: .monospaced))
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.primary)
           .frame(width: 52, alignment: .leading)
 
         Slider(
@@ -185,7 +202,7 @@ struct ContentView: View {
 
         Text(formattedTime(viewModel.playbackState.duration))
           .font(.system(.footnote, design: .monospaced))
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.primary)
           .frame(width: 52, alignment: .trailing)
 
         Button("Open...") {
@@ -213,11 +230,12 @@ struct ContentView: View {
         } label: {
           Label("Subtitles", systemImage: viewModel.hasSubtitleTrack ? "captions.bubble.fill" : "captions.bubble")
         }
+        .labelStyle(.titleAndIcon)
       }
 
       HStack(spacing: 10) {
         Image(systemName: "speaker.wave.2")
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.primary)
 
         Slider(value: $viewModel.volume, in: 0...1)
           .frame(maxWidth: 180)
@@ -234,6 +252,7 @@ struct ContentView: View {
           Text("2.0x").tag(2.0)
         }
         .pickerStyle(.segmented)
+        .labelsHidden()
         .frame(width: 250)
 
         Spacer()
@@ -242,10 +261,75 @@ struct ContentView: View {
           Image(systemName: "arrow.up.left.and.arrow.down.right")
         }
       }
+
+      HStack(spacing: 8) {
+        Label(statusLineText, systemImage: "info.circle")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+
+        Spacer(minLength: 8)
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
-    .background(.ultraThinMaterial)
+    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .stroke(.white.opacity(0.12), lineWidth: 1)
+    }
+  }
+
+  private var headerView: some View {
+    HStack(spacing: 12) {
+      Text(viewModel.currentURL?.lastPathComponent ?? "Open a local video to start playback")
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+
+      Spacer(minLength: 12)
+
+      Button("Open...") {
+        viewModel.openPanel()
+      }
+
+      Menu {
+        Button("Add Subtitle...") {
+          viewModel.openSubtitlePanel()
+        }
+
+        if viewModel.hasSubtitleTrack {
+          Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
+            viewModel.subtitlesEnabled.toggle()
+          }
+
+          Button("Remove Subtitle") {
+            viewModel.removeSubtitleTrack()
+          }
+        }
+      } label: {
+        Image(systemName: "captions.bubble")
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .stroke(.white.opacity(0.12), lineWidth: 1)
+    }
+  }
+
+  private var backgroundLayer: some View {
+    LinearGradient(
+      colors: [
+        Color(red: 0.07, green: 0.1, blue: 0.14),
+        Color(red: 0.11, green: 0.15, blue: 0.2)
+      ],
+      startPoint: .topLeading,
+      endPoint: .bottomTrailing
+    )
+    .ignoresSafeArea()
   }
 
   private var seekRange: ClosedRange<Double> {
@@ -291,5 +375,13 @@ struct ContentView: View {
     }
 
     return String(format: "%02d:%02d", minutes, remainderSeconds)
+  }
+
+  private var statusLineText: String {
+    if let subtitleName = viewModel.activeSubtitleFileName {
+      return "Subtitles: \(subtitleName)"
+    }
+
+    return viewModel.statusMessage
   }
 }

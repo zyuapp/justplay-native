@@ -260,7 +260,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.justplay.native;
-				PRODUCT_NAME = JustPlayNative;
+				PRODUCT_NAME = JustPlay;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -343,7 +343,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.justplay.native;
-				PRODUCT_NAME = JustPlayNative;
+				PRODUCT_NAME = JustPlay;
 				SDKROOT = macosx;
 			};
 			name = Debug;
