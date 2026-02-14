@@ -42,10 +42,7 @@ struct RecentFilesPanel: View {
         }
       }
     }
-    .padding(16)
-    .frame(width: 320)
     .frame(maxHeight: .infinity, alignment: .topLeading)
-    .background(.regularMaterial)
   }
 
   private func recentRow(for entry: RecentPlaybackEntry) -> some View {

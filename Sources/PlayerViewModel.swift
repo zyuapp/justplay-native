@@ -10,6 +10,12 @@ final class PlayerViewModel: ObservableObject {
   @Published private(set) var recentEntries: [RecentPlaybackEntry]
   @Published private(set) var subtitleText: String?
   @Published private(set) var activeSubtitleFileName: String?
+  @Published var openSubtitlesAPIKey: String
+  @Published var subtitleSearchQuery = ""
+  @Published private(set) var subtitleSearchResults: [RemoteSubtitleSearchResult] = []
+  @Published private(set) var subtitleSearchMessage: String?
+  @Published private(set) var subtitleSearchIsLoading = false
+  @Published private(set) var subtitleDownloadInFlightID: Int?
 
   @Published var subtitlesEnabled = true {
     didSet {
@@ -45,9 +51,15 @@ final class PlayerViewModel: ObservableObject {
     !subtitleCues.isEmpty
   }
 
+  var isSubtitleAPIConfigured: Bool {
+    !openSubtitlesAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+
   private let recentPlaybackStore: RecentPlaybackStore
+  private var subtitleClient: OpenSubtitlesClient
   private let supportedFileExtensions = Set(["mp4", "m4v", "mkv"])
   private let maxRecentEntries = 50
+  private let openSubtitlesAPIKeyDefaultsKey = "OpenSubtitlesAPIKey"
 
   private var subtitleCues: [SubtitleCue] = []
   private var pendingResumeSeek: TimeInterval?
@@ -62,7 +74,17 @@ final class PlayerViewModel: ObservableObject {
   ) {
     self.engine = engine
     self.recentPlaybackStore = recentPlaybackStore
+
+    let storedKey = UserDefaults.standard.string(forKey: openSubtitlesAPIKeyDefaultsKey)
+      ?? ProcessInfo.processInfo.environment["OPEN_SUBTITLES_API_KEY"]
+      ?? ""
+    openSubtitlesAPIKey = storedKey
+    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: storedKey)
+
     recentEntries = recentPlaybackStore.loadEntries()
+    if !isSubtitleAPIConfigured {
+      subtitleSearchMessage = "Add your OpenSubtitles API key to enable online subtitle search."
+    }
 
     self.engine.stateDidChange = { [weak self] state in
       Task { @MainActor in
@@ -110,6 +132,11 @@ final class PlayerViewModel: ObservableObject {
 
     currentURL = normalizedURL
     currentOpenedAt = Date()
+    subtitleSearchQuery = normalizedSubtitleQuery(from: normalizedURL)
+    subtitleSearchResults = []
+    if isSubtitleAPIConfigured {
+      subtitleSearchMessage = "Search online subtitles for this video."
+    }
 
     let resumePosition = resumePosition(for: normalizedURL)
     pendingResumeSeek = resumePosition
@@ -162,6 +189,82 @@ final class PlayerViewModel: ObservableObject {
     subtitleCues = []
     subtitleText = nil
     activeSubtitleFileName = nil
+  }
+
+  func saveOpenSubtitlesAPIKey() {
+    let trimmed = openSubtitlesAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    openSubtitlesAPIKey = trimmed
+
+    if trimmed.isEmpty {
+      UserDefaults.standard.removeObject(forKey: openSubtitlesAPIKeyDefaultsKey)
+      subtitleSearchResults = []
+      subtitleSearchMessage = "Add your OpenSubtitles API key to enable online subtitle search."
+    } else {
+      UserDefaults.standard.set(trimmed, forKey: openSubtitlesAPIKeyDefaultsKey)
+      subtitleSearchMessage = "API key saved."
+    }
+
+    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: trimmed)
+  }
+
+  func useCurrentFileNameForSubtitleSearch() {
+    guard let currentURL else {
+      return
+    }
+
+    subtitleSearchQuery = normalizedSubtitleQuery(from: currentURL)
+  }
+
+  func searchSubtitles() {
+    subtitleClient = PlayerViewModel.makeSubtitleClient(apiKey: openSubtitlesAPIKey)
+
+    guard isSubtitleAPIConfigured else {
+      subtitleSearchMessage = "Add your OpenSubtitles API key to search subtitles online."
+      return
+    }
+
+    let query = subtitleSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !query.isEmpty else {
+      subtitleSearchMessage = "Enter a title or use the current file name."
+      subtitleSearchResults = []
+      return
+    }
+
+    subtitleSearchIsLoading = true
+    subtitleSearchMessage = "Searching subtitles..."
+    subtitleSearchResults = []
+
+    Task {
+      do {
+        let results = try await subtitleClient.searchSubtitles(query: query)
+        subtitleSearchResults = results
+        subtitleSearchIsLoading = false
+        subtitleSearchMessage = results.isEmpty ? "No subtitles found." : "Found \(results.count) subtitles."
+      } catch {
+        subtitleSearchIsLoading = false
+        subtitleSearchMessage = error.localizedDescription
+      }
+    }
+  }
+
+  func downloadSubtitle(_ result: RemoteSubtitleSearchResult) {
+    guard subtitleDownloadInFlightID == nil else {
+      return
+    }
+
+    subtitleDownloadInFlightID = result.id
+    subtitleSearchMessage = "Downloading \(result.fileName)..."
+
+    Task {
+      do {
+        let downloaded = try await subtitleClient.downloadSubtitle(fileID: result.fileID)
+        loadSubtitle(fromText: downloaded.subtitleText, fileName: downloaded.fileName, source: .remote)
+        subtitleDownloadInFlightID = nil
+      } catch {
+        subtitleDownloadInFlightID = nil
+        subtitleSearchMessage = error.localizedDescription
+      }
+    }
   }
 
   func togglePlayPause() {
@@ -374,6 +477,24 @@ final class PlayerViewModel: ObservableObject {
     }
   }
 
+  private func loadSubtitle(fromText subtitleText: String, fileName: String, source: SubtitleSource) {
+    let parsedCues = SRTParser.parse(text: subtitleText)
+    guard !parsedCues.isEmpty else {
+      removeSubtitleTrack()
+      if source == .manual || source == .remote {
+        statusMessage = "Unable to read subtitle file."
+      }
+      return
+    }
+
+    subtitleCues = parsedCues
+    activeSubtitleFileName = fileName
+    subtitlesEnabled = true
+    updateSubtitleText(for: playbackState.currentTime)
+    statusMessage = "Loaded subtitle: \(fileName)"
+    subtitleSearchMessage = "Loaded subtitle: \(fileName)"
+  }
+
   private func sidecarSubtitleURL(for videoURL: URL) -> URL? {
     let directoryURL = videoURL.deletingLastPathComponent()
     let baseName = videoURL.deletingPathExtension().lastPathComponent.lowercased()
@@ -413,12 +534,28 @@ final class PlayerViewModel: ObservableObject {
 
     return [.plainText]
   }
+
+  private func normalizedSubtitleQuery(from videoURL: URL) -> String {
+    let rawName = videoURL.deletingPathExtension().lastPathComponent
+    return rawName
+      .replacingOccurrences(of: ".", with: " ")
+      .replacingOccurrences(of: "_", with: " ")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+}
+
+private extension PlayerViewModel {
+  static func makeSubtitleClient(apiKey: String) -> OpenSubtitlesClient {
+    let config = OpenSubtitlesClient.Configuration.fromAPIKey(apiKey)
+    return OpenSubtitlesClient(configuration: config)
+  }
 }
 
 private extension PlayerViewModel {
   enum SubtitleSource {
     case autoDetected
     case manual
+    case remote
   }
 
   enum SubtitleError: Error {

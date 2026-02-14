@@ -9,9 +9,11 @@
 /* Begin PBXBuildFile section */
 		096DA17FE4D46000B7571672 /* PlaybackEngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E193BDD6260977714A8910AE /* PlaybackEngineFactory.swift */; };
 		0BC1F338F66D301610B61D97 /* VLCKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 31F1DBE11C9CCE9FDE8CDDB6 /* VLCKit.xcframework */; };
+		291EB67068F9E306E1C41843 /* SubtitleSearchPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12BCC8859303E05F2A8EC60 /* SubtitleSearchPanel.swift */; };
 		3187F8FD2C2C21FC4C323372 /* VLCPlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E216CF9C8AB75CE17B34A575 /* VLCPlaybackEngine.swift */; };
 		34DBA275DA5B8F857D8CD5C6 /* SubtitleCue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6914C20CE526C41F63348EE9 /* SubtitleCue.swift */; };
 		34DEF716B838FEDC80177DCA /* VideoOpenPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E401F35D80D07A5A4E9FA92B /* VideoOpenPanel.swift */; };
+		3992D13010A08CFA1CBEC7CD /* RemoteSubtitleSearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD676C39C215949A4532732 /* RemoteSubtitleSearchResult.swift */; };
 		3CC7D2E410274F4D7198304C /* PlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F44939527D2854FB968E6D5 /* PlaybackEngine.swift */; };
 		45A1F747A258982A59D1D8F2 /* SRTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D7B159A8D54A1AF7193E71 /* SRTParser.swift */; };
 		5CCAD30DA88FE0F49BFA1676 /* JustPlayNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B080886AF45493FEE25809 /* JustPlayNativeApp.swift */; };
@@ -24,6 +26,7 @@
 		A05AE1536231007CBA0BA4F3 /* RecentPlaybackStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C60CF40DFCF37D1160BD8F /* RecentPlaybackStore.swift */; };
 		AF116CD0775E1BC5DE97D71C /* AppOpenBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851F6C378CC53565D461318F /* AppOpenBus.swift */; };
 		B8CCD042942F720AFCBA255A /* PlayerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77848B7E26FE6B14FCBDD0D /* PlayerViewModel.swift */; };
+		BD7F9A7EE2ED68B02D19C009 /* OpenSubtitlesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DCD8FCA86B854A34886FF6 /* OpenSubtitlesClient.swift */; };
 		C2B9630F082E8E0017F19111 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007EE3686B226AB77A2E4092 /* ContentView.swift */; };
 		DC9FBFA2334AF57B1279DD31 /* RecentFilesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4571405250499A789CDDBB7 /* RecentFilesPanel.swift */; };
 		E1452D4A1BA3ACC4DFC6498A /* VLCKit.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 31F1DBE11C9CCE9FDE8CDDB6 /* VLCKit.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -48,17 +51,20 @@
 		00B080886AF45493FEE25809 /* JustPlayNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustPlayNativeApp.swift; sourceTree = "<group>"; };
 		03E45962A885B68F20CD371C /* DropURLLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropURLLoader.swift; sourceTree = "<group>"; };
 		0F44939527D2854FB968E6D5 /* PlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackEngine.swift; sourceTree = "<group>"; };
+		20DCD8FCA86B854A34886FF6 /* OpenSubtitlesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSubtitlesClient.swift; sourceTree = "<group>"; };
 		21C60CF40DFCF37D1160BD8F /* RecentPlaybackStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentPlaybackStore.swift; sourceTree = "<group>"; };
 		2E49E8946E2E1203F4F6D4EE /* RecentPlaybackEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentPlaybackEntry.swift; sourceTree = "<group>"; };
 		31F1DBE11C9CCE9FDE8CDDB6 /* VLCKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = VLCKit.xcframework; path = Carthage/Build/VLCKit.xcframework; sourceTree = "<group>"; };
 		6914C20CE526C41F63348EE9 /* SubtitleCue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleCue.swift; sourceTree = "<group>"; };
 		6B06DA0AAAF690E3C0E1D43A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		851F6C378CC53565D461318F /* AppOpenBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOpenBus.swift; sourceTree = "<group>"; };
+		9AD676C39C215949A4532732 /* RemoteSubtitleSearchResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSubtitleSearchResult.swift; sourceTree = "<group>"; };
 		9EEB764BFDBE9F88B490898A /* JustPlayNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustPlayNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA8AB22BE4B7208D0CE4CE17 /* PlaybackEngineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackEngineView.swift; sourceTree = "<group>"; };
 		D77848B7E26FE6B14FCBDD0D /* PlayerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViewModel.swift; sourceTree = "<group>"; };
 		DBB037F24B98F8C5176CF01D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DCD863B049B03E0588B3E562 /* AVFoundationPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVFoundationPlaybackEngine.swift; sourceTree = "<group>"; };
+		E12BCC8859303E05F2A8EC60 /* SubtitleSearchPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleSearchPanel.swift; sourceTree = "<group>"; };
 		E193BDD6260977714A8910AE /* PlaybackEngineFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackEngineFactory.swift; sourceTree = "<group>"; };
 		E216CF9C8AB75CE17B34A575 /* VLCPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLCPlaybackEngine.swift; sourceTree = "<group>"; };
 		E401F35D80D07A5A4E9FA92B /* VideoOpenPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoOpenPanel.swift; sourceTree = "<group>"; };
@@ -112,6 +118,8 @@
 		861362A8F8F9FF8777CAFFA9 /* Subtitles */ = {
 			isa = PBXGroup;
 			children = (
+				20DCD8FCA86B854A34886FF6 /* OpenSubtitlesClient.swift */,
+				9AD676C39C215949A4532732 /* RemoteSubtitleSearchResult.swift */,
 				E7D7B159A8D54A1AF7193E71 /* SRTParser.swift */,
 				6914C20CE526C41F63348EE9 /* SubtitleCue.swift */,
 			);
@@ -137,6 +145,7 @@
 				00B080886AF45493FEE25809 /* JustPlayNativeApp.swift */,
 				D77848B7E26FE6B14FCBDD0D /* PlayerViewModel.swift */,
 				E4571405250499A789CDDBB7 /* RecentFilesPanel.swift */,
+				E12BCC8859303E05F2A8EC60 /* SubtitleSearchPanel.swift */,
 				E401F35D80D07A5A4E9FA92B /* VideoOpenPanel.swift */,
 				16524567ABC7A4419BB095DC /* Playback */,
 				E06BF2A1B22F52F2EC47333A /* Recents */,
@@ -226,6 +235,7 @@
 				C2B9630F082E8E0017F19111 /* ContentView.swift in Sources */,
 				6FD6D7E9561363AE94A9DD24 /* DropURLLoader.swift in Sources */,
 				5CCAD30DA88FE0F49BFA1676 /* JustPlayNativeApp.swift in Sources */,
+				BD7F9A7EE2ED68B02D19C009 /* OpenSubtitlesClient.swift in Sources */,
 				3CC7D2E410274F4D7198304C /* PlaybackEngine.swift in Sources */,
 				096DA17FE4D46000B7571672 /* PlaybackEngineFactory.swift in Sources */,
 				7E3DEF84CF535C71E8AD1E61 /* PlaybackEngineView.swift in Sources */,
@@ -234,8 +244,10 @@
 				DC9FBFA2334AF57B1279DD31 /* RecentFilesPanel.swift in Sources */,
 				7DBFBB90CE7B9D4D0C8C5B26 /* RecentPlaybackEntry.swift in Sources */,
 				A05AE1536231007CBA0BA4F3 /* RecentPlaybackStore.swift in Sources */,
+				3992D13010A08CFA1CBEC7CD /* RemoteSubtitleSearchResult.swift in Sources */,
 				45A1F747A258982A59D1D8F2 /* SRTParser.swift in Sources */,
 				34DBA275DA5B8F857D8CD5C6 /* SubtitleCue.swift in Sources */,
+				291EB67068F9E306E1C41843 /* SubtitleSearchPanel.swift in Sources */,
 				3187F8FD2C2C21FC4C323372 /* VLCPlaybackEngine.swift in Sources */,
 				34DEF716B838FEDC80177DCA /* VideoOpenPanel.swift in Sources */,
 			);

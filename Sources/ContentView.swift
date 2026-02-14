@@ -10,6 +10,7 @@ struct ContentView: View {
   @State private var seekPosition: Double = 0
   @State private var isSeeking = false
   @State private var isFullscreen = false
+  @State private var isSubtitleSearchModalPresented = false
 
   var body: some View {
     ZStack {
@@ -35,6 +36,10 @@ struct ContentView: View {
             currentFilePath: viewModel.currentFilePath,
             onSelect: viewModel.openRecent
           )
+          .padding(16)
+          .frame(width: 320)
+          .frame(maxHeight: .infinity, alignment: .topLeading)
+          .background(.regularMaterial)
           .transition(.move(edge: .trailing).combined(with: .opacity))
         }
       }
@@ -64,6 +69,26 @@ struct ContentView: View {
     .onChange(of: viewModel.playbackState.duration) { newValue in
       guard !isSeeking else { return }
       seekPosition = min(seekPosition, max(newValue, 0))
+    }
+    .sheet(isPresented: $isSubtitleSearchModalPresented) {
+      SubtitleSearchPanel(
+        apiKey: $viewModel.openSubtitlesAPIKey,
+        query: $viewModel.subtitleSearchQuery,
+        isConfigured: viewModel.isSubtitleAPIConfigured,
+        hasSubtitleTrack: viewModel.hasSubtitleTrack,
+        subtitlesEnabled: viewModel.subtitlesEnabled,
+        isLoading: viewModel.subtitleSearchIsLoading,
+        statusMessage: viewModel.subtitleSearchMessage,
+        results: viewModel.subtitleSearchResults,
+        activeDownloadID: viewModel.subtitleDownloadInFlightID,
+        onSaveAPIKey: viewModel.saveOpenSubtitlesAPIKey,
+        onAddSubtitle: viewModel.openSubtitlePanel,
+        onToggleSubtitles: { viewModel.subtitlesEnabled.toggle() },
+        onRemoveSubtitle: viewModel.removeSubtitleTrack,
+        onUseCurrentFileName: viewModel.useCurrentFileNameForSubtitleSearch,
+        onSearch: viewModel.searchSubtitles,
+        onDownload: viewModel.downloadSubtitle
+      )
     }
     .frame(minWidth: 1080, minHeight: 640)
   }
@@ -209,28 +234,12 @@ struct ContentView: View {
           viewModel.openPanel()
         }
 
-        Menu {
-          Button("Add Subtitle...") {
-            viewModel.openSubtitlePanel()
-          }
-
-          if viewModel.hasSubtitleTrack {
-            Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
-              viewModel.subtitlesEnabled.toggle()
-            }
-
-            Button("Remove Subtitle") {
-              viewModel.removeSubtitleTrack()
-            }
-          } else {
-            Button("No subtitle loaded") {
-            }
-            .disabled(true)
-          }
+        Button {
+          presentSubtitleSearchModal()
         } label: {
           Label("Subtitles", systemImage: viewModel.hasSubtitleTrack ? "captions.bubble.fill" : "captions.bubble")
         }
-        .labelStyle(.titleAndIcon)
+        .buttonStyle(.bordered)
       }
 
       HStack(spacing: 10) {
@@ -293,20 +302,8 @@ struct ContentView: View {
         viewModel.openPanel()
       }
 
-      Menu {
-        Button("Add Subtitle...") {
-          viewModel.openSubtitlePanel()
-        }
-
-        if viewModel.hasSubtitleTrack {
-          Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
-            viewModel.subtitlesEnabled.toggle()
-          }
-
-          Button("Remove Subtitle") {
-            viewModel.removeSubtitleTrack()
-          }
-        }
+      Button {
+        presentSubtitleSearchModal()
       } label: {
         Image(systemName: "captions.bubble")
       }
@@ -360,6 +357,11 @@ struct ContentView: View {
 
   private func syncFullscreenState() {
     isFullscreen = NSApplication.shared.keyWindow?.styleMask.contains(.fullScreen) ?? false
+  }
+
+  private func presentSubtitleSearchModal() {
+    viewModel.useCurrentFileNameForSubtitleSearch()
+    isSubtitleSearchModalPresented = true
   }
 
   private func formattedTime(_ seconds: TimeInterval) -> String {
