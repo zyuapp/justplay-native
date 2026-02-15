@@ -8,6 +8,7 @@ final class PlayerViewModel: ObservableObject {
   @Published private(set) var currentURL: URL?
   @Published private(set) var statusMessage = "Drop an MP4 or MKV file, or open one from the menu."
   @Published private(set) var recentEntries: [RecentPlaybackEntry]
+  @Published private(set) var archivedEntries: [RecentPlaybackEntry]
   @Published private(set) var subtitleText: String?
   @Published private(set) var activeSubtitleFileName: String?
   @Published private(set) var availableSubtitleTracks: [SubtitleTrackOption] = []
@@ -66,7 +67,9 @@ final class PlayerViewModel: ObservableObject {
     self.engine = engine
     self.recentPlaybackStore = recentPlaybackStore
 
-    recentEntries = recentPlaybackStore.loadEntries()
+    let storedState = recentPlaybackStore.loadState()
+    recentEntries = storedState.recentEntries
+    archivedEntries = storedState.archivedEntries
 
     self.engine.stateDidChange = { [weak self] state in
       Task { @MainActor in
@@ -152,7 +155,23 @@ final class PlayerViewModel: ObservableObject {
 
   func removeRecent(_ entry: RecentPlaybackEntry) {
     recentEntries.removeAll { $0.filePath == entry.filePath }
-    recentPlaybackStore.saveEntries(recentEntries)
+    archivedEntries.removeAll { $0.filePath == entry.filePath }
+    archivedEntries.append(entry)
+    archivedEntries.sort { $0.lastOpenedAt > $1.lastOpenedAt }
+    saveRecentsState()
+  }
+
+  func restoreArchivedRecent(_ entry: RecentPlaybackEntry) {
+    archivedEntries.removeAll { $0.filePath == entry.filePath }
+    recentEntries.removeAll { $0.filePath == entry.filePath }
+    recentEntries.append(entry)
+    recentEntries.sort { $0.lastOpenedAt > $1.lastOpenedAt }
+    saveRecentsState()
+  }
+
+  func deleteArchivedRecentPermanently(_ entry: RecentPlaybackEntry) {
+    archivedEntries.removeAll { $0.filePath == entry.filePath }
+    saveRecentsState()
   }
 
   func selectSubtitleTrack(_ trackID: String) {
@@ -365,7 +384,16 @@ final class PlayerViewModel: ObservableObject {
       recentEntries = Array(recentEntries.prefix(maxRecentEntries))
     }
 
-    recentPlaybackStore.saveEntries(recentEntries)
+    archivedEntries.removeAll { $0.filePath == normalizedPath }
+    saveRecentsState()
+  }
+
+  private func saveRecentsState() {
+    let state = RecentPlaybackStore.State(
+      recentEntries: recentEntries,
+      archivedEntries: archivedEntries
+    )
+    recentPlaybackStore.saveState(state)
   }
 
   private func existingEntry(for url: URL) -> RecentPlaybackEntry? {

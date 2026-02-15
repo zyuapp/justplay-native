@@ -1,9 +1,34 @@
 import Foundation
 
 final class RecentPlaybackStore {
-  private struct Payload: Codable {
+  struct State {
+    let recentEntries: [RecentPlaybackEntry]
+    let archivedEntries: [RecentPlaybackEntry]
+  }
+
+  private struct Payload: Decodable {
     let schemaVersion: Int
     let entries: [RecentPlaybackEntry]
+    let archivedEntries: [RecentPlaybackEntry]
+
+    private enum CodingKeys: String, CodingKey {
+      case schemaVersion
+      case entries
+      case archivedEntries
+    }
+
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+      entries = try container.decode([RecentPlaybackEntry].self, forKey: .entries)
+      archivedEntries = try container.decodeIfPresent([RecentPlaybackEntry].self, forKey: .archivedEntries) ?? []
+    }
+  }
+
+  private struct SavePayload: Encodable {
+    let schemaVersion: Int
+    let entries: [RecentPlaybackEntry]
+    let archivedEntries: [RecentPlaybackEntry]
   }
 
   private let fileManager: FileManager
@@ -25,21 +50,24 @@ final class RecentPlaybackStore {
     decoder.dateDecodingStrategy = .iso8601
   }
 
-  func loadEntries() -> [RecentPlaybackEntry] {
+  func loadState() -> State {
     guard let data = try? Data(contentsOf: fileURL) else {
-      return []
+      return State(recentEntries: [], archivedEntries: [])
     }
 
     guard let payload = try? decoder.decode(Payload.self, from: data) else {
-      return []
+      return State(recentEntries: [], archivedEntries: [])
     }
 
-    return payload.entries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    let sortedRecentEntries = payload.entries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    let sortedArchivedEntries = payload.archivedEntries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    return State(recentEntries: sortedRecentEntries, archivedEntries: sortedArchivedEntries)
   }
 
-  func saveEntries(_ entries: [RecentPlaybackEntry]) {
-    let sortedEntries = entries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
-    let payload = Payload(schemaVersion: 1, entries: sortedEntries)
+  func saveState(_ state: State) {
+    let sortedRecentEntries = state.recentEntries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    let sortedArchivedEntries = state.archivedEntries.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    let payload = SavePayload(schemaVersion: 2, entries: sortedRecentEntries, archivedEntries: sortedArchivedEntries)
 
     do {
       try createDirectoryIfNeeded()
