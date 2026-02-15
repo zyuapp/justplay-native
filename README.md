@@ -18,33 +18,29 @@ brew install xcodegen carthage
 
 ## Quick Start
 
-1. Fetch the pinned VLCKit binary dependency:
+1. Fetch dependencies and generate the Xcode project:
 
    ```bash
-   carthage bootstrap --use-xcframeworks --platform macOS
+   make setup
    ```
 
-2. Generate the Xcode project from `project.yml`:
+2. Build from CLI:
 
    ```bash
-   xcodegen generate --use-cache
+   make build
    ```
 
-3. Build from CLI:
+3. Build and launch:
 
    ```bash
-   xcodebuild -project JustPlayNative.xcodeproj -scheme JustPlayNative -destination 'platform=macOS,arch=arm64' build
+   make run
    ```
 
-4. Build and launch:
-
-   ```bash
-   xcodebuild -project JustPlayNative.xcodeproj -scheme JustPlayNative -destination 'platform=macOS,arch=arm64' -derivedDataPath ./.derivedData build && open "./.derivedData/Build/Products/Debug/JustPlayNative.app"
-   ```
+You can run `make help` to see all available targets.
 
 ## Notes
 
-- `Carthage/` is intentionally not committed; every fresh clone should run Carthage bootstrap first.
+- `Carthage/` is intentionally not committed; every fresh clone should run `make bootstrap` first.
 - If Xcode/CoreSimulator version mismatch appears, run:
 
   ```bash
