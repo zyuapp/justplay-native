@@ -1,4 +1,7 @@
 .derivedData/
+.derivedData-release/
 .DS_Store
 .plans/
+.sisyphus/
+build/
 Carthage/

@@ -242,20 +242,7 @@ struct ContentView: View {
           .foregroundStyle(.primary)
           .frame(width: 52, alignment: .leading)
 
-        Slider(
-          value: Binding(
-            get: { seekPosition },
-            set: { seekPosition = $0 }
-          ),
-          in: seekRange,
-          onEditingChanged: { editing in
-            isSeeking = editing
-            if !editing {
-              viewModel.seek(to: seekPosition)
-            }
-          }
-        )
-        .disabled(viewModel.playbackState.duration <= 0)
+        seekBar
 
         Text(formattedTime(viewModel.playbackState.duration))
           .font(.system(.footnote, design: .monospaced))
@@ -354,9 +341,84 @@ struct ContentView: View {
     .ignoresSafeArea()
   }
 
-  private var seekRange: ClosedRange<Double> {
-    let duration = max(viewModel.playbackState.duration, 0.1)
-    return 0...duration
+  private var seekBar: some View {
+    GeometryReader { geometry in
+      let width = max(geometry.size.width, 1)
+      let duration = max(viewModel.playbackState.duration, 0)
+      let currentTime = isSeeking ? seekPosition : viewModel.playbackState.currentTime
+      let playedRatio = normalizedSeekRatio(for: currentTime, duration: duration)
+      let markerX = min(max(width * playedRatio, 0), width)
+      let previewTime = isSeeking ? seekPosition : nil
+      let previewPadding = min(CGFloat(28), width / 2)
+      let previewCenterX = min(max(markerX, previewPadding), width - previewPadding)
+
+      ZStack(alignment: .leading) {
+        Capsule(style: .continuous)
+          .fill(.white.opacity(0.2))
+          .frame(height: 4)
+
+        Capsule(style: .continuous)
+          .fill(.white.opacity(0.88))
+          .frame(width: max(width * playedRatio, 4), height: 4)
+
+        Circle()
+          .fill(.white)
+          .frame(width: 10, height: 10)
+          .offset(x: max(markerX - 5, 0))
+
+        if let previewTime {
+          Text(formattedTime(previewTime))
+            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .position(x: previewCenterX, y: -8)
+        }
+      }
+      .frame(height: 22)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 0)
+          .onChanged { value in
+            guard duration > 0 else { return }
+            let clampedX = min(max(value.location.x, 0), width)
+
+            let targetTime = seekTime(for: clampedX, totalWidth: width)
+            if !isSeeking {
+              isSeeking = true
+            }
+
+            seekPosition = targetTime
+            viewModel.seek(to: targetTime)
+          }
+          .onEnded { value in
+            guard duration > 0 else { return }
+            let clampedX = min(max(value.location.x, 0), width)
+            let targetTime = seekTime(for: clampedX, totalWidth: width)
+            seekPosition = targetTime
+            viewModel.seek(to: targetTime)
+            isSeeking = false
+          }
+      )
+      .opacity(duration > 0 ? 1 : 0.5)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 22)
+  }
+
+  private func normalizedSeekRatio(for time: Double, duration: Double) -> Double {
+    guard duration > 0 else {
+      return 0
+    }
+
+    return min(max(time / duration, 0), 1)
+  }
+
+  private func seekTime(for positionX: CGFloat, totalWidth: CGFloat) -> Double {
+    let clampedWidth = max(totalWidth, 1)
+    let ratio = min(max(Double(positionX / clampedWidth), 0), 1)
+    return ratio * max(viewModel.playbackState.duration, 0)
   }
 
   private var dropIndicator: some View {
