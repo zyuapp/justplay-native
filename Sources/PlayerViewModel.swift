@@ -94,6 +94,8 @@ final class PlayerViewModel: ObservableObject {
         self?.persistCurrentPlaybackProgress(force: true)
       }
     }
+
+    restoreMostRecentPlaybackSessionIfAvailable()
   }
 
   deinit {
@@ -217,6 +219,22 @@ final class PlayerViewModel: ObservableObject {
 
   private func isSupported(url: URL) -> Bool {
     supportedFileExtensions.contains(url.pathExtension.lowercased())
+  }
+
+  private func restoreMostRecentPlaybackSessionIfAvailable() {
+    guard let entry = recentEntries.first else {
+      return
+    }
+
+    let url = entry.resolvedURL.standardizedFileURL
+    guard
+      FileManager.default.fileExists(atPath: url.path),
+      isSupported(url: url)
+    else {
+      return
+    }
+
+    open(url: url, autoplay: false)
   }
 
   private func handlePlaybackStateChange(_ state: PlaybackState) {
