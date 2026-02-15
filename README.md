@@ -36,6 +36,18 @@ brew install xcodegen carthage
    make run
    ```
 
+4. Install the built app into `/Applications` and launch it:
+
+   ```bash
+   make install
+   ```
+
+   If you prefer user-local install:
+
+   ```bash
+   make install APPLICATIONS_DIR=~/Applications
+   ```
+
 You can run `make help` to see all available targets.
 
 ## Notes
