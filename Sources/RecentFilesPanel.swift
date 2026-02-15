@@ -143,9 +143,13 @@ struct RecentFilesPanel: View {
       }
       .buttonStyle(.plain)
 
-      actionIconButton(systemName: "archivebox.fill", helpText: "Move to archive") {
+      actionIconButton(
+        systemName: "archivebox.fill",
+        helpText: isCurrent ? "Cannot archive the currently playing video" : "Move to archive"
+      ) {
         onRemove(entry)
       }
+      .disabled(isCurrent)
     }
     .padding(10)
     .frame(maxWidth: .infinity, alignment: .leading)

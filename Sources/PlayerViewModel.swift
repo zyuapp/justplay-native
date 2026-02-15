@@ -164,6 +164,10 @@ final class PlayerViewModel: ObservableObject {
   }
 
   func removeRecent(_ entry: RecentPlaybackEntry) {
+    guard entry.filePath != currentFilePath else {
+      return
+    }
+
     recentEntries.removeAll { $0.filePath == entry.filePath }
     archivedEntries.removeAll { $0.filePath == entry.filePath }
     archivedEntries.append(entry)
