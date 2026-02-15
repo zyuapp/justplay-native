@@ -9,9 +9,13 @@ struct ContentView: View {
   @State private var isDropTargeted = false
   @State private var seekPosition: Double = 0
   @State private var isSeeking = false
+  @State private var seekStartedWhilePlaying = false
+  @State private var lastLiveSeekDispatchTimestamp: TimeInterval = 0
   @State private var isFullscreen = false
   @State private var isHoveringFullscreenControlsRegion = false
   @State private var keyboardMonitor: Any? = nil
+
+  private let liveSeekDispatchInterval: TimeInterval = 0.08
 
   var body: some View {
     ZStack {
@@ -228,7 +232,7 @@ struct ContentView: View {
     VStack(spacing: 12) {
       HStack(spacing: 10) {
         Button(action: viewModel.togglePlayPause) {
-          Image(systemName: viewModel.playbackState.isPlaying ? "pause.fill" : "play.fill")
+          Image(systemName: displayedIsPlaying ? "pause.fill" : "play.fill")
         }
         .buttonStyle(.borderedProminent)
         .keyboardShortcut(.space, modifiers: [])
@@ -241,7 +245,7 @@ struct ContentView: View {
           Image(systemName: "goforward.10")
         }
 
-        Text(formattedTime(viewModel.playbackState.currentTime))
+        Text(formattedTime(displayedCurrentTime))
           .font(.system(.footnote, design: .monospaced))
           .foregroundStyle(.primary)
           .frame(width: 52, alignment: .leading)
@@ -349,7 +353,7 @@ struct ContentView: View {
     GeometryReader { geometry in
       let width = max(geometry.size.width, 1)
       let duration = max(viewModel.playbackState.duration, 0)
-      let currentTime = isSeeking ? seekPosition : viewModel.playbackState.currentTime
+      let currentTime = displayedCurrentTime
       let playedRatio = normalizedSeekRatio(for: currentTime, duration: duration)
       let markerX = min(max(width * playedRatio, 0), width)
       let previewTime = isSeeking ? seekPosition : nil
@@ -390,19 +394,23 @@ struct ContentView: View {
 
             let targetTime = seekTime(for: clampedX, totalWidth: width)
             if !isSeeking {
-              isSeeking = true
+              beginSeekingSession()
             }
 
             seekPosition = targetTime
-            viewModel.seek(to: targetTime, persistImmediately: true)
+            dispatchLiveSeekIfNeeded(to: targetTime)
           }
           .onEnded { value in
-            guard duration > 0 else { return }
+            guard duration > 0 else {
+              endSeekingSession()
+              return
+            }
+
             let clampedX = min(max(value.location.x, 0), width)
             let targetTime = seekTime(for: clampedX, totalWidth: width)
             seekPosition = targetTime
             viewModel.seek(to: targetTime, persistImmediately: true)
-            isSeeking = false
+            endSeekingSession()
           }
       )
       .opacity(duration > 0 ? 1 : 0.5)
@@ -423,6 +431,35 @@ struct ContentView: View {
     let clampedWidth = max(totalWidth, 1)
     let ratio = min(max(Double(positionX / clampedWidth), 0), 1)
     return ratio * max(viewModel.playbackState.duration, 0)
+  }
+
+  private var displayedCurrentTime: TimeInterval {
+    isSeeking ? seekPosition : viewModel.playbackState.currentTime
+  }
+
+  private var displayedIsPlaying: Bool {
+    isSeeking ? seekStartedWhilePlaying : viewModel.playbackState.isPlaying
+  }
+
+  private func beginSeekingSession() {
+    isSeeking = true
+    seekStartedWhilePlaying = viewModel.playbackState.isPlaying
+    lastLiveSeekDispatchTimestamp = 0
+  }
+
+  private func endSeekingSession() {
+    isSeeking = false
+    lastLiveSeekDispatchTimestamp = 0
+  }
+
+  private func dispatchLiveSeekIfNeeded(to time: TimeInterval) {
+    let now = Date.timeIntervalSinceReferenceDate
+    guard now - lastLiveSeekDispatchTimestamp >= liveSeekDispatchInterval else {
+      return
+    }
+
+    lastLiveSeekDispatchTimestamp = now
+    viewModel.seek(to: time)
   }
 
   private var dropIndicator: some View {
