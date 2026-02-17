@@ -13,9 +13,11 @@ struct ContentView: View {
   @State private var lastLiveSeekDispatchTimestamp: TimeInterval = 0
   @State private var isFullscreen = false
   @State private var isHoveringFullscreenControlsRegion = false
+  @State private var isVolumePopoverPresented = false
   @State private var keyboardMonitor: Any? = nil
 
   private let liveSeekDispatchInterval: TimeInterval = 0.08
+  private let playbackRateOptions: [Double] = [0.5, 1.0, 1.25, 1.5, 2.0]
 
   var body: some View {
     ZStack {
@@ -229,22 +231,27 @@ struct ContentView: View {
   }
 
   private var controlsView: some View {
-    VStack(spacing: 12) {
-      HStack(spacing: 10) {
-        Button(action: viewModel.togglePlayPause) {
-          Image(systemName: displayedIsPlaying ? "pause.fill" : "play.fill")
-        }
-        .buttonStyle(.borderedProminent)
-        .keyboardShortcut(.space, modifiers: [])
+    let hasActiveMedia = viewModel.currentURL != nil
 
-        Button(action: viewModel.skipBackward) {
-          Image(systemName: "gobackward.10")
-        }
+    return HStack(spacing: 8) {
+      Button(action: viewModel.togglePlayPause) {
+        Image(systemName: displayedIsPlaying ? "pause.fill" : "play.fill")
+      }
+      .buttonStyle(.borderedProminent)
+      .keyboardShortcut(.space, modifiers: [])
+      .disabled(!hasActiveMedia)
 
-        Button(action: viewModel.skipForward) {
-          Image(systemName: "goforward.10")
-        }
+      Button(action: viewModel.skipBackward) {
+        Image(systemName: "gobackward.10")
+      }
+      .disabled(!hasActiveMedia)
 
+      Button(action: viewModel.skipForward) {
+        Image(systemName: "goforward.10")
+      }
+      .disabled(!hasActiveMedia)
+
+      HStack(spacing: 8) {
         Text(formattedTime(displayedCurrentTime))
           .font(.system(.footnote, design: .monospaced))
           .foregroundStyle(.primary)
@@ -256,63 +263,124 @@ struct ContentView: View {
           .font(.system(.footnote, design: .monospaced))
           .foregroundStyle(.primary)
           .frame(width: 52, alignment: .trailing)
+      }
+      .frame(maxWidth: .infinity)
 
+      Button {
+        isVolumePopoverPresented.toggle()
+      } label: {
+        Image(systemName: "speaker.wave.2.fill")
+      }
+      .buttonStyle(.bordered)
+      .help("Volume")
+      .popover(isPresented: $isVolumePopoverPresented, arrowEdge: .top) {
+        volumePopoverContent
+      }
+
+      Menu {
+        ForEach(playbackRateOptions, id: \.self) { rate in
+          Button {
+            viewModel.playbackRate = rate
+          } label: {
+            HStack(spacing: 8) {
+              Text(playbackRateLabel(for: rate))
+
+              Spacer(minLength: 8)
+
+              if isSelectedPlaybackRate(rate) {
+                Image(systemName: "checkmark")
+              }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+          }
+        }
+      } label: {
+        Text(playbackRateLabel(for: viewModel.playbackRate))
+          .font(.system(.footnote, design: .monospaced))
+          .frame(minWidth: 42)
+      }
+      .buttonStyle(.bordered)
+      .help("Playback Speed")
+      .disabled(!hasActiveMedia)
+
+      Menu {
         Button("Open...") {
           viewModel.openPanel()
         }
 
-        Button {
+        Divider()
+
+        Button("Add Subtitle...") {
           viewModel.openSubtitlePanel()
-        } label: {
-          Label("Subtitles", systemImage: viewModel.hasSubtitleTrack ? "captions.bubble.fill" : "captions.bubble")
         }
-        .buttonStyle(.bordered)
 
-        Button(action: toggleFullscreen) {
-          Image(systemName: "arrow.up.left.and.arrow.down.right")
+        if viewModel.hasSubtitleTrack {
+          Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
+            viewModel.subtitlesEnabled.toggle()
+          }
+
+          Button("Remove Subtitle") {
+            viewModel.removeSubtitleTrack()
+          }
         }
-        .buttonStyle(.bordered)
+      } label: {
+        Image(systemName: "ellipsis.circle")
       }
+      .buttonStyle(.bordered)
+      .help("More Actions")
 
-      HStack(spacing: 10) {
-        Image(systemName: "speaker.wave.2")
-          .foregroundStyle(.primary)
-
-        Slider(value: $viewModel.volume, in: 0...1)
-          .frame(maxWidth: 180)
-
-        Button(action: { viewModel.isMuted.toggle() }) {
-          Image(systemName: viewModel.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-        }
-
-        Picker("Speed", selection: $viewModel.playbackRate) {
-          Text("0.5x").tag(0.5)
-          Text("1.0x").tag(1.0)
-          Text("1.25x").tag(1.25)
-          Text("1.5x").tag(1.5)
-          Text("2.0x").tag(2.0)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(width: 250)
+      Button(action: toggleFullscreen) {
+        Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
       }
-
-      HStack(spacing: 8) {
-        Label(statusLineText, systemImage: "info.circle")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-
-        Spacer(minLength: 8)
-      }
+      .buttonStyle(.bordered)
+      .help(isFullscreen ? "Exit Full Screen" : "Enter Full Screen")
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     .overlay {
       RoundedRectangle(cornerRadius: 14, style: .continuous)
         .stroke(.white.opacity(0.12), lineWidth: 1)
     }
+  }
+
+  private var volumePopoverContent: some View {
+    let trailingControlWidth: CGFloat = 44
+
+    return VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Text("Volume")
+          .font(.subheadline.weight(.semibold))
+
+        Spacer(minLength: 8)
+
+        Button {
+          viewModel.isMuted.toggle()
+        } label: {
+          Image(systemName: viewModel.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+        }
+        .buttonStyle(.bordered)
+        .frame(width: trailingControlWidth, alignment: .trailing)
+        .help(viewModel.isMuted ? "Unmute" : "Mute")
+      }
+
+      HStack(spacing: 10) {
+        Image(systemName: "speaker.wave.1.fill")
+          .foregroundStyle(.secondary)
+
+        Slider(value: $viewModel.volume, in: 0...1)
+          .frame(maxWidth: .infinity)
+          .disabled(viewModel.isMuted)
+          .onChange(of: viewModel.volume) { newValue in
+            if newValue > 0, viewModel.isMuted {
+              viewModel.isMuted = false
+            }
+          }
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    .frame(width: 272)
   }
 
   private var headerView: some View {
@@ -568,11 +636,24 @@ struct ContentView: View {
     return String(format: "%02d:%02d", minutes, remainderSeconds)
   }
 
-  private var statusLineText: String {
-    if let subtitleName = viewModel.activeSubtitleFileName {
-      return "Subtitles: \(subtitleName)"
+  private func playbackRateLabel(for rate: Double) -> String {
+    switch rate {
+    case 0.5:
+      return "0.5x"
+    case 1.0:
+      return "1.0x"
+    case 1.25:
+      return "1.25x"
+    case 1.5:
+      return "1.5x"
+    case 2.0:
+      return "2.0x"
+    default:
+      return String(format: "%.2fx", rate)
     }
+  }
 
-    return viewModel.statusMessage
+  private func isSelectedPlaybackRate(_ rate: Double) -> Bool {
+    abs(rate - viewModel.playbackRate) < 0.001
   }
 }
