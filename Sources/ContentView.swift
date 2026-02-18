@@ -15,6 +15,7 @@ struct ContentView: View {
   @State private var isHoveringFullscreenControlsRegion = false
   @State private var isVolumePopoverPresented = false
   @State private var keyboardMonitor: Any? = nil
+  @State private var isSidebarVisible = true
 
   private let liveSeekDispatchInterval: TimeInterval = 0.08
   private let playbackRateOptions: [Double] = [0.5, 1.0, 1.25, 1.5, 2.0]
@@ -40,7 +41,7 @@ struct ContentView: View {
         .padding(.vertical, isFullscreen ? 0 : 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        if !isFullscreen {
+        if !isFullscreen && isSidebarVisible {
           Divider()
             .overlay(.white.opacity(0.08))
 
@@ -62,6 +63,7 @@ struct ContentView: View {
       }
     }
     .animation(.easeInOut(duration: 0.22), value: isFullscreen)
+    .animation(.easeInOut(duration: 0.22), value: isSidebarVisible)
     .onAppear {
       syncFullscreenState()
       setupKeyboardMonitoring()
@@ -307,6 +309,13 @@ struct ContentView: View {
         Button("Open...") {
           viewModel.openPanel()
         }
+
+        Divider()
+
+        Button(isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+          isSidebarVisible.toggle()
+        }
+        .keyboardShortcut("b", modifiers: .command)
 
         Divider()
 
@@ -558,6 +567,11 @@ struct ContentView: View {
       }
 
       guard !event.modifierFlags.contains(.command) else {
+        // Handle Cmd+B for sidebar toggle
+        if event.keyCode == 11 {
+          self.isSidebarVisible.toggle()
+          return nil
+        }
         return event
       }
 
