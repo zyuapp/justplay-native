@@ -39,7 +39,7 @@ final class RecentPlaybackStore {
 
   init(
     fileManager: FileManager = .default,
-    bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "com.justplay.native"
+    bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "com.justplay"
   ) {
     self.fileManager = fileManager
     self.fileURL = Self.makeFileURL(fileManager: fileManager, bundleIdentifier: bundleIdentifier)
@@ -48,6 +48,8 @@ final class RecentPlaybackStore {
     encoder.dateEncodingStrategy = .iso8601
 
     decoder.dateDecodingStrategy = .iso8601
+
+    migrateLegacyStoreIfNeeded(from: "com.justplay.native")
   }
 
   func loadState() -> State {
@@ -108,5 +110,28 @@ final class RecentPlaybackStore {
     return appSupportURL
       .appendingPathComponent(bundleIdentifier, isDirectory: true)
       .appendingPathComponent("recent-playback.v1.json")
+  }
+
+  private func migrateLegacyStoreIfNeeded(from legacyBundleIdentifier: String) {
+    let legacyFileURL = Self.makeFileURL(fileManager: fileManager, bundleIdentifier: legacyBundleIdentifier)
+
+    guard legacyFileURL != fileURL else {
+      return
+    }
+
+    guard fileManager.fileExists(atPath: legacyFileURL.path) else {
+      return
+    }
+
+    guard !fileManager.fileExists(atPath: fileURL.path) else {
+      return
+    }
+
+    do {
+      try createDirectoryIfNeeded()
+      try fileManager.copyItem(at: legacyFileURL, to: fileURL)
+    } catch {
+      return
+    }
   }
 }
