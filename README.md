@@ -1,6 +1,6 @@
-# JustPlayNative
+# JustPlay
 
-JustPlayNative is a macOS SwiftUI video player app generated from an XcodeGen spec.
+JustPlay is a macOS SwiftUI video player app generated from an XcodeGen spec.
 
 ## Requirements
 

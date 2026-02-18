@@ -1,4 +1,4 @@
-# JustPlayNative
+# JustPlay
 
 macOS SwiftUI app generated from an XcodeGen spec.
 
@@ -13,18 +13,18 @@ macOS SwiftUI app generated from an XcodeGen spec.
 | `make install APPLICATIONS_DIR=~/Applications` | Install to user-local Applications directory. |
 | `make help` | Show all available Makefile targets. |
 | `xcodegen dump --type summary` | Validate the resolved XcodeGen spec and target summary. |
-| `xcodegen generate --use-cache` | Regenerate `JustPlayNative.xcodeproj` and plist outputs from `project.yml`. |
-| `xcodebuild -project JustPlayNative.xcodeproj -scheme JustPlayNative -destination 'platform=macOS,arch=arm64' build` | Build the app from CLI for Apple Silicon macOS. |
-| `xcodebuild -project JustPlayNative.xcodeproj -scheme JustPlayNative -destination 'platform=macOS,arch=arm64' -derivedDataPath ./.derivedData build && open "./.derivedData/Build/Products/Debug/JustPlay.app"` | Build and launch from CLI. |
+| `xcodegen generate --use-cache` | Regenerate `JustPlay.xcodeproj` and plist outputs from `project.yml`. |
+| `xcodebuild -project JustPlay.xcodeproj -scheme JustPlay -destination 'platform=macOS,arch=arm64' build` | Build the app from CLI for Apple Silicon macOS. |
+| `xcodebuild -project JustPlay.xcodeproj -scheme JustPlay -destination 'platform=macOS,arch=arm64' -derivedDataPath ./.derivedData build && open "./.derivedData/Build/Products/Debug/JustPlay.app"` | Build and launch from CLI. |
 | `xcrun simctl list devices` | Refresh CoreSimulator service state if Xcode/CoreSimulator mismatch errors appear. |
 
 ## Architecture
 
 ```text
 project.yml                # Source-of-truth XcodeGen spec
-JustPlayNative.xcodeproj/  # Generated project; regenerate instead of manual edits
+JustPlay.xcodeproj/  # Generated project; regenerate instead of manual edits
 Sources/
-  JustPlayNativeApp.swift  # @main app entry
+  JustPlayApp.swift        # @main app entry
   ContentView.swift        # Main window UI
   Info.plist               # Generated/synced from project.yml info properties
 ```
