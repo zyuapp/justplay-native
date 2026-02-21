@@ -93,6 +93,10 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   }
 
   func setNativeSubtitleRenderingEnabled(_ enabled: Bool) {
+    guard isNativeSubtitleRenderingEnabled != enabled else {
+      return
+    }
+
     isNativeSubtitleRenderingEnabled = enabled
     applyNativeSubtitleRenderingSetting()
     emitState()
@@ -106,11 +110,13 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   private func applyNativeSubtitleRenderingSetting() {
     if isNativeSubtitleRenderingEnabled {
       if let cachedNativeSubtitleTrackIndex {
-        mediaPlayer.currentVideoSubTitleIndex = cachedNativeSubtitleTrackIndex
+        if mediaPlayer.currentVideoSubTitleIndex != cachedNativeSubtitleTrackIndex {
+          mediaPlayer.currentVideoSubTitleIndex = cachedNativeSubtitleTrackIndex
+        }
+
         self.cachedNativeSubtitleTrackIndex = nil
-      } else {
-        mediaPlayer.currentVideoSubTitleIndex = 0
       }
+
       return
     }
 
@@ -144,7 +150,6 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
 
 extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   func mediaPlayerStateChanged(_ aNotification: Notification) {
-    applyNativeSubtitleRenderingSetting()
     emitState()
 
     if mediaPlayer.state == .ended {
@@ -153,7 +158,6 @@ extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   }
 
   func mediaPlayerTimeChanged(_ aNotification: Notification) {
-    applyNativeSubtitleRenderingSetting()
     emitState()
   }
 }
