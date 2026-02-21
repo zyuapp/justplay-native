@@ -14,4 +14,5 @@ protocol PlaybackEngine: AnyObject {
   func setRate(_ rate: Float)
   func setVolume(_ volume: Float)
   func setMuted(_ muted: Bool)
+  func setNativeSubtitleRenderingEnabled(_ enabled: Bool)
 }

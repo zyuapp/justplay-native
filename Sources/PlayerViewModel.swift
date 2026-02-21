@@ -92,6 +92,7 @@ final class PlayerViewModel: ObservableObject {
     self.engine.setRate(Float(playbackRate))
     self.engine.setVolume(Float(volume))
     self.engine.setMuted(isMuted)
+    self.engine.setNativeSubtitleRenderingEnabled(true)
 
     startPlaybackProgressTimer()
     appWillTerminateObserver = NotificationCenter.default.addObserver(
@@ -578,6 +579,7 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private func activateSubtitleTrack(_ track: LoadedSubtitleTrack) {
+    engine.setNativeSubtitleRenderingEnabled(false)
     subtitleCues = track.cues
     subtitleTimelineCues = track.cues
     activeSubtitleFileName = track.displayName
@@ -588,6 +590,7 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private func clearActiveSubtitleTrack() {
+    engine.setNativeSubtitleRenderingEnabled(true)
     subtitleCues = []
     subtitleTimelineCues = []
     activeSubtitleCueIndex = nil

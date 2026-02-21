@@ -16,6 +16,7 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
   private var currentVolume: Float = 1.0
   private var isMuted = false
   private var latestSeekRequestID: UInt64 = 0
+  private var isNativeSubtitleRenderingEnabled = true
 
   init() {
     player = AVPlayer()
@@ -49,6 +50,7 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
   func load(url: URL, autoplay: Bool) {
     let item = AVPlayerItem(url: url)
     player.replaceCurrentItem(with: item)
+    applyNativeSubtitleRenderingSelection(for: item)
 
     if autoplay {
       player.playImmediately(atRate: preferredRate)
@@ -114,6 +116,11 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
     emitState()
   }
 
+  func setNativeSubtitleRenderingEnabled(_ enabled: Bool) {
+    isNativeSubtitleRenderingEnabled = enabled
+    applyNativeSubtitleRenderingSelection()
+  }
+
   private func setupObservers() {
     let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
     timeObserver = player.addPeriodicTimeObserver(
@@ -165,5 +172,20 @@ final class AVFoundationPlaybackEngine: PlaybackEngine {
     )
 
     stateDidChange?(state)
+  }
+
+  private func applyNativeSubtitleRenderingSelection(for item: AVPlayerItem? = nil) {
+    guard
+      let item = item ?? player.currentItem,
+      let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
+    else {
+      return
+    }
+
+    if isNativeSubtitleRenderingEnabled {
+      item.selectMediaOptionAutomatically(in: group)
+    } else {
+      item.select(nil, in: group)
+    }
   }
 }

@@ -13,6 +13,8 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   private var preferredRate: Float = 1.0
   private var currentVolume: Float = 1.0
   private var isMuted = false
+  private var isNativeSubtitleRenderingEnabled = true
+  private var cachedNativeSubtitleTrackIndex: Int32?
 
   override init() {
     mediaPlayer = VLCMediaPlayer()
@@ -35,6 +37,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   func load(url: URL, autoplay: Bool) {
     let media = VLCMedia(url: url)
     mediaPlayer.media = media
+    cachedNativeSubtitleTrackIndex = nil
 
     if autoplay {
       mediaPlayer.play()
@@ -42,6 +45,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
 
     mediaPlayer.rate = preferredRate
     applyVolumeSettings()
+    applyNativeSubtitleRenderingSetting()
     emitState()
   }
 
@@ -88,9 +92,34 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
     emitState()
   }
 
+  func setNativeSubtitleRenderingEnabled(_ enabled: Bool) {
+    isNativeSubtitleRenderingEnabled = enabled
+    applyNativeSubtitleRenderingSetting()
+    emitState()
+  }
+
   private func applyVolumeSettings() {
     mediaPlayer.audio?.isMuted = isMuted
     mediaPlayer.audio?.volume = Int32(currentVolume * 100)
+  }
+
+  private func applyNativeSubtitleRenderingSetting() {
+    if isNativeSubtitleRenderingEnabled {
+      if let cachedNativeSubtitleTrackIndex {
+        mediaPlayer.currentVideoSubTitleIndex = cachedNativeSubtitleTrackIndex
+        self.cachedNativeSubtitleTrackIndex = nil
+      } else {
+        mediaPlayer.currentVideoSubTitleIndex = 0
+      }
+      return
+    }
+
+    let currentTrackIndex = mediaPlayer.currentVideoSubTitleIndex
+    if currentTrackIndex != -1, cachedNativeSubtitleTrackIndex == nil {
+      cachedNativeSubtitleTrackIndex = currentTrackIndex
+    }
+
+    mediaPlayer.currentVideoSubTitleIndex = -1
   }
 
   private func emitState() {
@@ -115,6 +144,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
 
 extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   func mediaPlayerStateChanged(_ aNotification: Notification) {
+    applyNativeSubtitleRenderingSetting()
     emitState()
 
     if mediaPlayer.state == .ended {
@@ -123,6 +153,7 @@ extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   }
 
   func mediaPlayerTimeChanged(_ aNotification: Notification) {
+    applyNativeSubtitleRenderingSetting()
     emitState()
   }
 }
