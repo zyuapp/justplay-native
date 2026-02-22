@@ -13,8 +13,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   private var preferredRate: Float = 1.0
   private var currentVolume: Float = 1.0
   private var isMuted = false
-  private var isNativeSubtitleRenderingEnabled = true
-  private var cachedNativeSubtitleTrackIndex: Int32?
+  private var nativeSubtitlePolicy = VLCNativeSubtitlePolicy()
 
   override init() {
     mediaPlayer = VLCMediaPlayer()
@@ -37,7 +36,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   func load(url: URL, autoplay: Bool) {
     let media = VLCMedia(url: url)
     mediaPlayer.media = media
-    cachedNativeSubtitleTrackIndex = nil
+    nativeSubtitlePolicy.mediaDidLoad()
 
     if autoplay {
       mediaPlayer.play()
@@ -45,7 +44,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
 
     mediaPlayer.rate = preferredRate
     applyVolumeSettings()
-    applyNativeSubtitleRenderingSetting()
+    reconcileNativeSubtitleRendering()
     emitState()
   }
 
@@ -93,12 +92,17 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
   }
 
   func setNativeSubtitleRenderingEnabled(_ enabled: Bool) {
-    guard isNativeSubtitleRenderingEnabled != enabled else {
+    let wasEnabled = nativeSubtitlePolicy.isNativeRenderingEnabled
+    let commands = nativeSubtitlePolicy.setNativeRenderingEnabled(
+      enabled,
+      currentTrackIndex: mediaPlayer.currentVideoSubTitleIndex
+    )
+
+    guard wasEnabled != nativeSubtitlePolicy.isNativeRenderingEnabled else {
       return
     }
 
-    isNativeSubtitleRenderingEnabled = enabled
-    applyNativeSubtitleRenderingSetting()
+    applyNativeSubtitleCommands(commands)
     emitState()
   }
 
@@ -107,25 +111,20 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
     mediaPlayer.audio?.volume = Int32(currentVolume * 100)
   }
 
-  private func applyNativeSubtitleRenderingSetting() {
-    if isNativeSubtitleRenderingEnabled {
-      if let cachedNativeSubtitleTrackIndex {
-        if mediaPlayer.currentVideoSubTitleIndex != cachedNativeSubtitleTrackIndex {
-          mediaPlayer.currentVideoSubTitleIndex = cachedNativeSubtitleTrackIndex
+  private func reconcileNativeSubtitleRendering() {
+    let commands = nativeSubtitlePolicy.reconcile(currentTrackIndex: mediaPlayer.currentVideoSubTitleIndex)
+    applyNativeSubtitleCommands(commands)
+  }
+
+  private func applyNativeSubtitleCommands(_ commands: [VLCNativeSubtitleCommand]) {
+    for command in commands {
+      switch command {
+      case let .setTrack(trackIndex):
+        if mediaPlayer.currentVideoSubTitleIndex != trackIndex {
+          mediaPlayer.currentVideoSubTitleIndex = trackIndex
         }
-
-        self.cachedNativeSubtitleTrackIndex = nil
       }
-
-      return
     }
-
-    let currentTrackIndex = mediaPlayer.currentVideoSubTitleIndex
-    if currentTrackIndex != -1, cachedNativeSubtitleTrackIndex == nil {
-      cachedNativeSubtitleTrackIndex = currentTrackIndex
-    }
-
-    mediaPlayer.currentVideoSubTitleIndex = -1
   }
 
   private func emitState() {
@@ -150,6 +149,7 @@ final class VLCPlaybackEngine: NSObject, PlaybackEngine {
 
 extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   func mediaPlayerStateChanged(_ aNotification: Notification) {
+    reconcileNativeSubtitleRendering()
     emitState()
 
     if mediaPlayer.state == .ended {
@@ -158,6 +158,7 @@ extension VLCPlaybackEngine: VLCMediaPlayerDelegate {
   }
 
   func mediaPlayerTimeChanged(_ aNotification: Notification) {
+    reconcileNativeSubtitleRendering()
     emitState()
   }
 }
