@@ -51,6 +51,7 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private let recentPlaybackStore: RecentPlaybackStore
+  private let noteRecentDocumentURL: (URL) -> Void
   private let supportedFileExtensions = Set(["mp4", "m4v", "mkv"])
   private let maxRecentEntries = 50
 
@@ -68,10 +69,17 @@ final class PlayerViewModel: ObservableObject {
 
   init(
     engine: PlaybackEngine = PlaybackEngineFactory.makeDefaultEngine(),
-    recentPlaybackStore: RecentPlaybackStore = RecentPlaybackStore()
+    recentPlaybackStore: RecentPlaybackStore = RecentPlaybackStore(),
+    enableProgressPersistenceTimer: Bool = true,
+    observeApplicationWillTerminate: Bool = true,
+    restorePreviousSessionOnLaunch: Bool = true,
+    noteRecentDocumentURL: ((URL) -> Void)? = nil
   ) {
     self.engine = engine
     self.recentPlaybackStore = recentPlaybackStore
+    self.noteRecentDocumentURL = noteRecentDocumentURL ?? { url in
+      NSDocumentController.shared.noteNewRecentDocumentURL(url)
+    }
 
     let storedState = recentPlaybackStore.loadState()
     recentEntries = storedState.recentEntries
@@ -94,18 +102,25 @@ final class PlayerViewModel: ObservableObject {
     self.engine.setMuted(isMuted)
     self.engine.setNativeSubtitleRenderingEnabled(true)
 
-    startPlaybackProgressTimer()
-    appWillTerminateObserver = NotificationCenter.default.addObserver(
-      forName: NSApplication.willTerminateNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in
-        self?.persistCurrentPlaybackProgress(force: true)
+    if enableProgressPersistenceTimer {
+      startPlaybackProgressTimer()
+    }
+
+    if observeApplicationWillTerminate {
+      appWillTerminateObserver = NotificationCenter.default.addObserver(
+        forName: NSApplication.willTerminateNotification,
+        object: nil,
+        queue: .main
+      ) { [weak self] _ in
+        Task { @MainActor in
+          self?.persistCurrentPlaybackProgress(force: true)
+        }
       }
     }
 
-    restoreMostRecentPlaybackSessionIfAvailable()
+    if restorePreviousSessionOnLaunch {
+      restoreMostRecentPlaybackSessionIfAvailable()
+    }
   }
 
   deinit {
@@ -147,7 +162,7 @@ final class PlayerViewModel: ObservableObject {
     restorePersistedSubtitleSelection(for: normalizedURL)
 
     engine.load(url: normalizedURL, autoplay: autoplay)
-    NSDocumentController.shared.noteNewRecentDocumentURL(normalizedURL)
+    noteRecentDocumentURL(normalizedURL)
 
     let seedDuration = existingEntry(for: normalizedURL)?.duration ?? 0
     upsertRecentEntry(

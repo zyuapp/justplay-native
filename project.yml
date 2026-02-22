@@ -5,6 +5,14 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
+schemes:
+  JustPlay:
+    build:
+      targets:
+        JustPlay: all
+    test:
+      targets:
+        - JustPlayTests
 targets:
   JustPlay:
     type: application
@@ -48,3 +56,15 @@ targets:
                 - mkv
               public.mime-type:
                 - video/x-matroska
+
+  JustPlayTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: Tests/JustPlayTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+    dependencies:
+      - target: JustPlay
