@@ -1,0 +1,44 @@
+name: macOS CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: macos-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Cache Carthage artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.carthage.CarthageKit
+            Carthage/Build
+          key: ${{ runner.os }}-carthage-${{ hashFiles('Cartfile.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-carthage-
+
+      - name: Install tooling
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          brew list carthage >/dev/null 2>&1 || brew install carthage
+
+      - name: Bootstrap dependencies and generate project
+        run: make setup
+
+      - name: Build and test
+        run: make test
