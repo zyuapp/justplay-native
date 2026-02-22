@@ -4,6 +4,7 @@ struct RecentFilesPanel: View {
   private enum PanelTab: Hashable {
     case recent
     case archive
+    case subtitles
   }
 
   let entries: [RecentPlaybackEntry]
@@ -13,6 +14,10 @@ struct RecentFilesPanel: View {
   let onRemove: (RecentPlaybackEntry) -> Void
   let onRestoreArchived: (RecentPlaybackEntry) -> Void
   let onDeleteArchivedPermanently: (RecentPlaybackEntry) -> Void
+  let subtitleCues: [SubtitleCue]
+  let activeSubtitleCueIndex: Int?
+  let activeSubtitleFileName: String?
+  let onSelectSubtitleCue: (Int) -> Void
 
   @State private var selectedTab: PanelTab = .recent
 
@@ -21,6 +26,7 @@ struct RecentFilesPanel: View {
       Picker("Section", selection: $selectedTab) {
         Text("Recent").tag(PanelTab.recent)
         Text("Archive").tag(PanelTab.archive)
+        Text("Subtitles").tag(PanelTab.subtitles)
       }
       .pickerStyle(.segmented)
       .labelsHidden()
@@ -31,6 +37,8 @@ struct RecentFilesPanel: View {
           recentTab
         case .archive:
           archiveTab
+        case .subtitles:
+          subtitlesTab
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -82,6 +90,15 @@ struct RecentFilesPanel: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+  }
+
+  private var subtitlesTab: some View {
+    SubtitleTimelinePanel(
+      cues: subtitleCues,
+      activeCueIndex: activeSubtitleCueIndex,
+      activeSubtitleFileName: activeSubtitleFileName,
+      onSelectCue: onSelectSubtitleCue
+    )
   }
 
   private func sectionHeader(title: String, count: Int) -> some View {
@@ -206,9 +223,9 @@ struct RecentFilesPanel: View {
       return "Start from beginning"
     }
 
-    let resumeText = formattedTime(entry.lastPlaybackPosition)
+    let resumeText = entry.lastPlaybackPosition.playbackText
     if entry.duration > 0 {
-      let durationText = formattedTime(entry.duration)
+      let durationText = entry.duration.playbackText
       return "Resume at \(resumeText) of \(durationText)"
     }
 
@@ -225,20 +242,6 @@ struct RecentFilesPanel: View {
     return "Opened \(formatter.localizedString(for: date, relativeTo: Date()))"
   }
 
-  private func formattedTime(_ seconds: TimeInterval) -> String {
-    guard seconds.isFinite else { return "00:00" }
-
-    let totalSeconds = max(Int(seconds.rounded(.down)), 0)
-    let hours = totalSeconds / 3600
-    let minutes = (totalSeconds % 3600) / 60
-    let remainderSeconds = totalSeconds % 60
-
-    if hours > 0 {
-      return String(format: "%d:%02d:%02d", hours, minutes, remainderSeconds)
-    }
-
-    return String(format: "%02d:%02d", minutes, remainderSeconds)
-  }
 }
 
 private struct ActionIconButton: View {

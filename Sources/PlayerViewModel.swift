@@ -13,6 +13,8 @@ final class PlayerViewModel: ObservableObject {
   @Published private(set) var activeSubtitleFileName: String?
   @Published private(set) var availableSubtitleTracks: [SubtitleTrackOption] = []
   @Published private(set) var selectedSubtitleTrackID: String?
+  @Published private(set) var subtitleTimelineCues: [SubtitleCue] = []
+  @Published private(set) var activeSubtitleCueIndex: Int?
 
   @Published var subtitlesEnabled = true {
     didSet {
@@ -49,6 +51,7 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private let recentPlaybackStore: RecentPlaybackStore
+  private let noteRecentDocumentURL: (URL) -> Void
   private let supportedFileExtensions = Set(["mp4", "m4v", "mkv"])
   private let maxRecentEntries = 50
 
@@ -66,10 +69,17 @@ final class PlayerViewModel: ObservableObject {
 
   init(
     engine: PlaybackEngine = PlaybackEngineFactory.makeDefaultEngine(),
-    recentPlaybackStore: RecentPlaybackStore = RecentPlaybackStore()
+    recentPlaybackStore: RecentPlaybackStore = RecentPlaybackStore(),
+    enableProgressPersistenceTimer: Bool = true,
+    observeApplicationWillTerminate: Bool = true,
+    restorePreviousSessionOnLaunch: Bool = true,
+    noteRecentDocumentURL: ((URL) -> Void)? = nil
   ) {
     self.engine = engine
     self.recentPlaybackStore = recentPlaybackStore
+    self.noteRecentDocumentURL = noteRecentDocumentURL ?? { url in
+      NSDocumentController.shared.noteNewRecentDocumentURL(url)
+    }
 
     let storedState = recentPlaybackStore.loadState()
     recentEntries = storedState.recentEntries
@@ -90,19 +100,27 @@ final class PlayerViewModel: ObservableObject {
     self.engine.setRate(Float(playbackRate))
     self.engine.setVolume(Float(volume))
     self.engine.setMuted(isMuted)
+    self.engine.setNativeSubtitleRenderingEnabled(true)
 
-    startPlaybackProgressTimer()
-    appWillTerminateObserver = NotificationCenter.default.addObserver(
-      forName: NSApplication.willTerminateNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in
-        self?.persistCurrentPlaybackProgress(force: true)
+    if enableProgressPersistenceTimer {
+      startPlaybackProgressTimer()
+    }
+
+    if observeApplicationWillTerminate {
+      appWillTerminateObserver = NotificationCenter.default.addObserver(
+        forName: NSApplication.willTerminateNotification,
+        object: nil,
+        queue: .main
+      ) { [weak self] _ in
+        Task { @MainActor in
+          self?.persistCurrentPlaybackProgress(force: true)
+        }
       }
     }
 
-    restoreMostRecentPlaybackSessionIfAvailable()
+    if restorePreviousSessionOnLaunch {
+      restoreMostRecentPlaybackSessionIfAvailable()
+    }
   }
 
   deinit {
@@ -144,7 +162,7 @@ final class PlayerViewModel: ObservableObject {
     restorePersistedSubtitleSelection(for: normalizedURL)
 
     engine.load(url: normalizedURL, autoplay: autoplay)
-    NSDocumentController.shared.noteNewRecentDocumentURL(normalizedURL)
+    noteRecentDocumentURL(normalizedURL)
 
     let seedDuration = existingEntry(for: normalizedURL)?.duration ?? 0
     upsertRecentEntry(
@@ -230,6 +248,14 @@ final class PlayerViewModel: ObservableObject {
     persistCurrentPlaybackProgress(force: true)
   }
 
+  func seekToSubtitleCue(at index: Int) {
+    guard subtitleTimelineCues.indices.contains(index) else {
+      return
+    }
+
+    seek(to: subtitleTimelineCues[index].start, persistImmediately: true)
+  }
+
   func togglePlayPause() {
     if playbackState.isPlaying {
       engine.pause()
@@ -265,6 +291,7 @@ final class PlayerViewModel: ObservableObject {
 
     engine.seek(to: clampedSeconds)
     playbackState.currentTime = clampedSeconds
+    updateSubtitleText(for: clampedSeconds)
 
     if persistImmediately {
       persistCurrentPlaybackProgress(force: true, overridePosition: clampedSeconds)
@@ -567,7 +594,9 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private func activateSubtitleTrack(_ track: LoadedSubtitleTrack) {
+    engine.setNativeSubtitleRenderingEnabled(false)
     subtitleCues = track.cues
+    subtitleTimelineCues = track.cues
     activeSubtitleFileName = track.displayName
     selectedSubtitleTrackID = track.id
     subtitlesEnabled = true
@@ -576,7 +605,10 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private func clearActiveSubtitleTrack() {
+    engine.setNativeSubtitleRenderingEnabled(true)
     subtitleCues = []
+    subtitleTimelineCues = []
+    activeSubtitleCueIndex = nil
     subtitleText = nil
     activeSubtitleFileName = nil
     selectedSubtitleTrackID = nil
@@ -657,6 +689,8 @@ final class PlayerViewModel: ObservableObject {
   }
 
   private func updateSubtitleText(for time: TimeInterval) {
+    activeSubtitleCueIndex = findActiveSubtitleCueIndex(at: time)
+
     guard subtitlesEnabled else {
       subtitleText = nil
       return
@@ -667,7 +701,36 @@ final class PlayerViewModel: ObservableObject {
       return
     }
 
-    subtitleText = subtitleCues.first { $0.contains(time) }?.text
+    guard let activeSubtitleCueIndex else {
+      subtitleText = nil
+      return
+    }
+
+    subtitleText = subtitleCues[activeSubtitleCueIndex].text
+  }
+
+  private func findActiveSubtitleCueIndex(at time: TimeInterval) -> Int? {
+    guard !subtitleCues.isEmpty else {
+      return nil
+    }
+
+    var lowerBound = 0
+    var upperBound = subtitleCues.count - 1
+
+    while lowerBound <= upperBound {
+      let middleIndex = lowerBound + ((upperBound - lowerBound) / 2)
+      let cue = subtitleCues[middleIndex]
+
+      if time < cue.start {
+        upperBound = middleIndex - 1
+      } else if time > cue.end {
+        lowerBound = middleIndex + 1
+      } else {
+        return middleIndex
+      }
+    }
+
+    return nil
   }
 
   private func subtitleContentTypes() -> [UTType] {

@@ -6,7 +6,7 @@ DERIVED_DATA := ./.derivedData
 APP_BUNDLE := $(DERIVED_DATA)/Build/Products/Debug/$(APP_NAME)
 APPLICATIONS_DIR ?= /Applications
 
-.PHONY: bootstrap generate setup build run install help
+.PHONY: bootstrap generate setup build test run install help
 
 bootstrap:
 	carthage bootstrap --use-xcframeworks --platform macOS
@@ -18,6 +18,9 @@ setup: bootstrap generate
 
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' build
+
+test:
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' test
 
 run:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build && open "$(APP_BUNDLE)"
@@ -31,6 +34,7 @@ help:
 	@printf "  make generate   # Generate Xcode project from project.yml\n"
 	@printf "  make setup      # bootstrap + generate\n"
 	@printf "  make build      # Build app for macOS arm64\n"
+	@printf "  make test       # Run unit tests\n"
 	@printf "  make run        # Build and open app\n"
 	@printf "  make install    # Build, copy app to /Applications, and open\n"
 	@printf "  make install APPLICATIONS_DIR=~/Applications\n"
