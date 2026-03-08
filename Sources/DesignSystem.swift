@@ -69,7 +69,7 @@ private struct ShadowModifier: ViewModifier {
 }
 
 extension View {
-  func dsShadow(_ modifier: some ViewModifier) -> some View {
+  func dsModifier(_ modifier: some ViewModifier) -> some View {
     self.modifier(modifier)
   }
 }

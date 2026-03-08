@@ -467,7 +467,7 @@ struct ContentView: View {
       RoundedRectangle(cornerRadius: DS.Radii.controlBar, style: .continuous)
         .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
     }
-    .dsShadow(DS.Shadows.controlBar())
+    .dsModifier(DS.Shadows.controlBar())
   }
 
   private var volumePopoverContent: some View {

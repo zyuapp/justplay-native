@@ -72,6 +72,20 @@ struct RecentPlaybackEntry: Codable, Identifiable {
     return min(max(lastPlaybackPosition / duration, 0), 1)
   }
 
+  var progressDetailText: String {
+    if lastPlaybackPosition <= 0 {
+      return "Start from beginning"
+    }
+
+    let resumeText = lastPlaybackPosition.playbackText
+    if duration > 0 {
+      let durationText = duration.playbackText
+      return "Resume at \(resumeText) of \(durationText)"
+    }
+
+    return "Resume at \(resumeText)"
+  }
+
   static func normalizedPath(for url: URL) -> String {
     url.standardizedFileURL.path
   }

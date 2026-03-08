@@ -1,5 +1,15 @@
 import SwiftUI
 
+private let recentRelativeDateFormatter: RelativeDateTimeFormatter = {
+  let formatter = RelativeDateTimeFormatter()
+  formatter.unitsStyle = .full
+  return formatter
+}()
+
+private func recentRelativeDateText(for date: Date) -> String {
+  "Opened \(recentRelativeDateFormatter.localizedString(for: date, relativeTo: Date()))"
+}
+
 struct RecentFilesPanel: View {
   private enum PanelTab: Hashable {
     case recent
@@ -134,7 +144,7 @@ struct RecentFilesPanel: View {
           .font(.subheadline.weight(.medium))
           .lineLimit(1)
 
-        Text(progressDetail(for: entry))
+        Text(entry.progressDetailText)
           .font(.caption2)
           .foregroundStyle(.secondary)
       }
@@ -155,31 +165,11 @@ struct RecentFilesPanel: View {
       RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous)
         .fill(DS.Colors.surfacePrimary)
     )
-    .help(relativeDateText(for: entry.lastOpenedAt))
-  }
-
-  private func progressDetail(for entry: RecentPlaybackEntry) -> String {
-    if entry.lastPlaybackPosition <= 0 {
-      return "Start from beginning"
-    }
-
-    let resumeText = entry.lastPlaybackPosition.playbackText
-    if entry.duration > 0 {
-      let durationText = entry.duration.playbackText
-      return "Resume at \(resumeText) of \(durationText)"
-    }
-
-    return "Resume at \(resumeText)"
+    .help(recentRelativeDateText(for: entry.lastOpenedAt))
   }
 
   private func actionIconButton(systemName: String, helpText: String, action: @escaping () -> Void) -> some View {
     ActionIconButton(systemName: systemName, helpText: helpText, action: action)
-  }
-
-  private func relativeDateText(for date: Date) -> String {
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .full
-    return "Opened \(formatter.localizedString(for: date, relativeTo: Date()))"
   }
 
 }
@@ -227,7 +217,7 @@ private struct RecentRowView: View {
 
             progressBar(for: entry)
 
-            Text(progressDetail(for: entry))
+            Text(entry.progressDetailText)
               .font(.caption2)
               .foregroundStyle(.secondary)
           }
@@ -263,7 +253,7 @@ private struct RecentRowView: View {
         isHovered = hovering
       }
     }
-    .help(relativeDateText(for: entry.lastOpenedAt))
+    .help(recentRelativeDateText(for: entry.lastOpenedAt))
   }
 
   private func progressBar(for entry: RecentPlaybackEntry) -> some View {
@@ -281,26 +271,6 @@ private struct RecentRowView: View {
       }
     }
     .frame(height: 3)
-  }
-
-  private func progressDetail(for entry: RecentPlaybackEntry) -> String {
-    if entry.lastPlaybackPosition <= 0 {
-      return "Start from beginning"
-    }
-
-    let resumeText = entry.lastPlaybackPosition.playbackText
-    if entry.duration > 0 {
-      let durationText = entry.duration.playbackText
-      return "Resume at \(resumeText) of \(durationText)"
-    }
-
-    return "Resume at \(resumeText)"
-  }
-
-  private func relativeDateText(for date: Date) -> String {
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .full
-    return "Opened \(formatter.localizedString(for: date, relativeTo: Date()))"
   }
 }
 

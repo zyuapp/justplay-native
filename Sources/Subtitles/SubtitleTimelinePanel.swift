@@ -125,7 +125,7 @@ struct SubtitleTimelinePanel: View {
 
     if !displayedCues.contains(where: { $0.id == activeCueIndex }) {
       searchQuery = ""
-      DispatchQueue.main.async {
+      Task { @MainActor in
         withAnimation(DS.Anim.gentle) {
           proxy.scrollTo(activeCueIndex, anchor: .center)
         }
