@@ -236,14 +236,13 @@ private struct RecentRowView: View {
       }
       .buttonStyle(.plain)
 
-      if isHovered || isCurrent {
+      if isHovered && !isCurrent {
         ActionIconButton(
           systemName: "archivebox.fill",
-          helpText: isCurrent ? "Cannot archive the currently playing video" : "Move to archive"
+          helpText: "Move to archive"
         ) {
           onRemove(entry)
         }
-        .disabled(isCurrent)
         .transition(.opacity)
       }
     }
