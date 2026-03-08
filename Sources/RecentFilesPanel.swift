@@ -1,5 +1,15 @@
 import SwiftUI
 
+private let recentRelativeDateFormatter: RelativeDateTimeFormatter = {
+  let formatter = RelativeDateTimeFormatter()
+  formatter.unitsStyle = .full
+  return formatter
+}()
+
+private func recentRelativeDateText(for date: Date) -> String {
+  "Opened \(recentRelativeDateFormatter.localizedString(for: date, relativeTo: Date()))"
+}
+
 struct RecentFilesPanel: View {
   private enum PanelTab: Hashable {
     case recent
@@ -23,7 +33,7 @@ struct RecentFilesPanel: View {
   @State private var selectedTab: PanelTab = .recent
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: DS.Spacing.lg) {
       Picker("Section", selection: $selectedTab) {
         Text("Recent").tag(PanelTab.recent)
         Text("Archive").tag(PanelTab.archive)
@@ -43,27 +53,33 @@ struct RecentFilesPanel: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .animation(DS.Anim.snappy, value: selectedTab)
     }
     .frame(maxHeight: .infinity, alignment: .topLeading)
   }
 
   private var recentTab: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      sectionHeader(title: "Recent", count: entries.count)
+    VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+      sectionHeader(title: "RECENT", count: entries.count)
 
       if entries.isEmpty {
         Text("No recent videos yet.")
           .font(.subheadline)
           .foregroundStyle(.secondary)
-          .padding(.top, 4)
+          .padding(.top, DS.Spacing.xs)
       } else {
         ScrollView {
-          LazyVStack(spacing: 10) {
+          LazyVStack(spacing: DS.Spacing.md) {
             ForEach(entries) { entry in
-              recentRow(for: entry)
+              RecentRowView(
+                entry: entry,
+                isCurrent: entry.filePath == currentFilePath,
+                onSelect: onSelect,
+                onRemove: onRemove
+              )
             }
           }
-          .padding(.vertical, 4)
+          .padding(.vertical, DS.Spacing.xs)
         }
       }
     }
@@ -71,22 +87,22 @@ struct RecentFilesPanel: View {
   }
 
   private var archiveTab: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      sectionHeader(title: "Archive", count: archivedEntries.count)
+    VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+      sectionHeader(title: "ARCHIVE", count: archivedEntries.count)
 
       if archivedEntries.isEmpty {
         Text("No archived videos yet.")
           .font(.subheadline)
           .foregroundStyle(.secondary)
-          .padding(.top, 4)
+          .padding(.top, DS.Spacing.xs)
       } else {
         ScrollView {
-          LazyVStack(spacing: 10) {
+          LazyVStack(spacing: DS.Spacing.md) {
             ForEach(archivedEntries) { entry in
               archiveRow(for: entry)
             }
           }
-          .padding(.vertical, 4)
+          .padding(.vertical, DS.Spacing.xs)
         }
       }
     }
@@ -106,99 +122,34 @@ struct RecentFilesPanel: View {
   private func sectionHeader(title: String, count: Int) -> some View {
     HStack {
       Text(title)
-        .font(.title3.weight(.semibold))
+        .font(.system(size: 13, weight: .semibold))
+        .tracking(0.5)
+        .foregroundStyle(.secondary)
 
       Spacer()
 
       Text("\(count)")
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(.white.opacity(0.08), in: Capsule())
-    }
-  }
-
-  private func recentRow(for entry: RecentPlaybackEntry) -> some View {
-    let isCurrent = entry.filePath == currentFilePath
-    let iconColor: Color = isCurrent ? .accentColor : .secondary
-    let cardFill: Color = isCurrent ? Color.accentColor.opacity(0.2) : Color.white.opacity(0.06)
-    let cardStroke: Color = isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.07)
-
-    return HStack(spacing: 10) {
-      Button {
-        onSelect(entry)
-      } label: {
-        HStack(spacing: 10) {
-          Image(systemName: "film")
-            .font(.headline)
-            .frame(width: 28, height: 28)
-            .foregroundStyle(iconColor)
-
-          VStack(alignment: .leading, spacing: 4) {
-            Text(entry.displayName)
-              .font(.subheadline.weight(.medium))
-              .lineLimit(1)
-
-            if isCurrent {
-              Text("Now Playing")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-            }
-
-            Text(relativeDateText(for: entry.lastOpenedAt))
-              .font(.caption)
-              .foregroundStyle(.secondary)
-
-            ProgressView(value: entry.progress)
-              .progressViewStyle(.linear)
-
-            Text(progressDetail(for: entry))
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .buttonStyle(.plain)
-
-      actionIconButton(
-        systemName: "archivebox.fill",
-        helpText: isCurrent ? "Cannot archive the currently playing video" : "Move to archive"
-      ) {
-        onRemove(entry)
-      }
-      .disabled(isCurrent)
-    }
-    .padding(10)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(
-      RoundedRectangle(cornerRadius: 10, style: .continuous)
-        .fill(cardFill)
-    )
-    .overlay {
-      RoundedRectangle(cornerRadius: 10, style: .continuous)
-        .stroke(cardStroke, lineWidth: 1)
+        .font(.system(size: 11, weight: .medium, design: .monospaced))
+        .foregroundStyle(DS.Colors.textSecondary)
+        .padding(.horizontal, DS.Spacing.sm)
+        .padding(.vertical, 2)
+        .background(DS.Colors.surfacePrimary, in: Capsule())
     }
   }
 
   private func archiveRow(for entry: RecentPlaybackEntry) -> some View {
-    HStack(spacing: 10) {
-      VStack(alignment: .leading, spacing: 4) {
+    HStack(spacing: DS.Spacing.md) {
+      VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text(entry.displayName)
           .font(.subheadline.weight(.medium))
           .lineLimit(1)
 
-        Text(relativeDateText(for: entry.lastOpenedAt))
-          .font(.caption)
-          .foregroundStyle(.secondary)
-
-        Text(progressDetail(for: entry))
+        Text(entry.progressDetailText)
           .font(.caption2)
           .foregroundStyle(.secondary)
       }
 
-      Spacer(minLength: 6)
+      Spacer(minLength: DS.Spacing.sm)
 
       actionIconButton(systemName: "arrow.uturn.backward.circle.fill", helpText: "Undo archive") {
         onRestoreArchived(entry)
@@ -208,43 +159,122 @@ struct RecentFilesPanel: View {
         onDeleteArchivedPermanently(entry)
       }
     }
-    .padding(10)
+    .padding(DS.Spacing.md)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(
-      RoundedRectangle(cornerRadius: 10, style: .continuous)
-        .fill(Color.white.opacity(0.06))
+      RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous)
+        .fill(DS.Colors.surfacePrimary)
     )
-    .overlay {
-      RoundedRectangle(cornerRadius: 10, style: .continuous)
-        .stroke(Color.white.opacity(0.07), lineWidth: 1)
-    }
-  }
-
-  private func progressDetail(for entry: RecentPlaybackEntry) -> String {
-    if entry.lastPlaybackPosition <= 0 {
-      return "Start from beginning"
-    }
-
-    let resumeText = entry.lastPlaybackPosition.playbackText
-    if entry.duration > 0 {
-      let durationText = entry.duration.playbackText
-      return "Resume at \(resumeText) of \(durationText)"
-    }
-
-    return "Resume at \(resumeText)"
+    .help(recentRelativeDateText(for: entry.lastOpenedAt))
   }
 
   private func actionIconButton(systemName: String, helpText: String, action: @escaping () -> Void) -> some View {
     ActionIconButton(systemName: systemName, helpText: helpText, action: action)
   }
 
-  private func relativeDateText(for date: Date) -> String {
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .full
-    return "Opened \(formatter.localizedString(for: date, relativeTo: Date()))"
+}
+
+// MARK: - Recent Row
+
+private struct RecentRowView: View {
+  let entry: RecentPlaybackEntry
+  let isCurrent: Bool
+  let onSelect: (RecentPlaybackEntry) -> Void
+  let onRemove: (RecentPlaybackEntry) -> Void
+
+  @State private var isHovered = false
+
+  var body: some View {
+    let fill: Color = isCurrent
+      ? DS.Colors.surfaceSelected
+      : (isHovered ? DS.Colors.surfaceHovered : .clear)
+
+    HStack(spacing: DS.Spacing.md) {
+      Button {
+        onSelect(entry)
+      } label: {
+        HStack(spacing: DS.Spacing.md) {
+          Image(systemName: "film")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+            .frame(width: 32, height: 32)
+            .background(
+              (isCurrent ? Color.accentColor : Color.white).opacity(0.1),
+              in: RoundedRectangle(cornerRadius: DS.Radii.button, style: .continuous)
+            )
+
+          VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            Text(entry.displayName)
+              .font(.subheadline.weight(.medium))
+              .lineLimit(1)
+
+            if isCurrent {
+              Text("NOW PLAYING")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
+                .foregroundStyle(Color.accentColor)
+            }
+
+            progressBar(for: entry)
+
+            Text(entry.progressDetailText)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .buttonStyle(.plain)
+
+      if isHovered && !isCurrent {
+        ActionIconButton(
+          systemName: "archivebox.fill",
+          helpText: "Move to archive"
+        ) {
+          onRemove(entry)
+        }
+        .transition(.opacity)
+      }
+    }
+    .padding(DS.Spacing.md)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(
+      RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous)
+        .fill(fill)
+    )
+    .overlay {
+      if isCurrent {
+        RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous)
+          .stroke(Color.accentColor.opacity(0.3), lineWidth: DS.hairline)
+      }
+    }
+    .onHover { hovering in
+      withAnimation(DS.Anim.snappy) {
+        isHovered = hovering
+      }
+    }
+    .help(recentRelativeDateText(for: entry.lastOpenedAt))
   }
 
+  private func progressBar(for entry: RecentPlaybackEntry) -> some View {
+    GeometryReader { geometry in
+      let width = max(geometry.size.width, 1)
+      let filledWidth = max(width * entry.progress, 2)
+
+      ZStack(alignment: .leading) {
+        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+          .fill(DS.Colors.seekTrack)
+
+        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+          .fill(isCurrent ? Color.accentColor : DS.Colors.seekFill)
+          .frame(width: filledWidth)
+      }
+    }
+    .frame(height: 3)
+  }
 }
+
+// MARK: - Action Icon Button
 
 private struct ActionIconButton: View {
   let systemName: String
@@ -256,10 +286,13 @@ private struct ActionIconButton: View {
   var body: some View {
     Button(action: action) {
       Image(systemName: systemName)
-        .font(.system(size: 15, weight: .semibold))
+        .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(isHovered ? Color.primary : .secondary)
-        .frame(width: 36, height: 36)
-        .background(isHovered ? .white.opacity(0.15) : .white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(width: 32, height: 32)
+        .background(
+          isHovered ? DS.Colors.surfaceHovered : .clear,
+          in: RoundedRectangle(cornerRadius: DS.Radii.button, style: .continuous)
+        )
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)

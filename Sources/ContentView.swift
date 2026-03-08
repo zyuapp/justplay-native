@@ -20,6 +20,7 @@ struct ContentView: View {
   @State private var keyboardMonitor: Any? = nil
   @State private var isSidebarVisible = true
   @State private var fullscreenSubtitleHideWorkItem: DispatchWorkItem?
+  @State private var isSeekBarHovered = false
 
   private let liveSeekDispatchInterval: TimeInterval = 0.08
   private let fullscreenSubtitleHideDelay: TimeInterval = 0.35
@@ -30,7 +31,7 @@ struct ContentView: View {
       backgroundLayer
 
       HStack(spacing: 0) {
-        VStack(spacing: isFullscreen ? 0 : 14) {
+        VStack(spacing: isFullscreen ? 0 : DS.Spacing.lg) {
           if !isFullscreen {
             headerView
           }
@@ -42,14 +43,11 @@ struct ContentView: View {
             controlsView
           }
         }
-        .padding(.horizontal, isFullscreen ? 0 : 16)
-        .padding(.vertical, isFullscreen ? 0 : 14)
+        .padding(.horizontal, isFullscreen ? 0 : DS.Spacing.xl)
+        .padding(.vertical, isFullscreen ? 0 : DS.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         if !isFullscreen && isSidebarVisible {
-          Divider()
-            .overlay(.white.opacity(0.08))
-
           RecentFilesPanel(
             entries: viewModel.recentEntries,
             archivedEntries: viewModel.archivedEntries,
@@ -64,16 +62,21 @@ struct ContentView: View {
             onAddSubtitle: viewModel.openSubtitlePanel,
             onSelectSubtitleCue: viewModel.seekToSubtitleCue
           )
-          .padding(16)
+          .padding(DS.Spacing.xl)
           .frame(width: 320)
           .frame(maxHeight: .infinity, alignment: .topLeading)
-          .background(.regularMaterial)
+          .background(.ultraThinMaterial)
+          .overlay(alignment: .leading) {
+            Rectangle()
+              .fill(DS.Colors.borderSubtle)
+              .frame(width: DS.hairline)
+          }
           .transition(.move(edge: .trailing).combined(with: .opacity))
         }
       }
     }
-    .animation(.easeInOut(duration: 0.22), value: isFullscreen)
-    .animation(.easeInOut(duration: 0.22), value: isSidebarVisible)
+    .animation(DS.Anim.gentle, value: isFullscreen)
+    .animation(DS.Anim.gentle, value: isSidebarVisible)
     .onAppear {
       syncFullscreenState()
       setupKeyboardMonitoring()
@@ -130,11 +133,11 @@ struct ContentView: View {
         emptyStateView
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: isFullscreen ? 0 : 18, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: isFullscreen ? 0 : DS.Radii.player, style: .continuous))
     .overlay {
       if !isFullscreen {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-          .stroke(.white.opacity(0.12), lineWidth: 1)
+        RoundedRectangle(cornerRadius: DS.Radii.player, style: .continuous)
+          .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
       }
     }
     .shadow(color: .black.opacity(isFullscreen ? 0 : 0.3), radius: isFullscreen ? 0 : 18, x: 0, y: isFullscreen ? 0 : 10)
@@ -200,15 +203,20 @@ struct ContentView: View {
             onAddSubtitle: viewModel.openSubtitlePanel,
             onSelectCue: viewModel.seekToSubtitleCue
           )
-          .padding(14)
+          .padding(DS.Spacing.lg)
           .frame(width: 360)
           .frame(maxHeight: .infinity, alignment: .topLeading)
-          .background(.regularMaterial)
+          .background(.ultraThinMaterial)
+          .overlay(alignment: .leading) {
+            Rectangle()
+              .fill(DS.Colors.borderSubtle)
+              .frame(width: DS.hairline)
+          }
           .transition(.move(edge: .trailing).combined(with: .opacity))
           .onHover(perform: updateFullscreenSubtitlePanelHover)
         }
       }
-      .animation(.easeInOut(duration: 0.2), value: isFullscreenSubtitlePanelVisible)
+      .animation(DS.Anim.controlReveal, value: isFullscreenSubtitlePanelVisible)
     }
   }
 
@@ -221,9 +229,16 @@ struct ContentView: View {
           .frame(height: 172)
 
         if isHoveringFullscreenControlsRegion {
+          LinearGradient(
+            colors: [.clear, .black.opacity(0.6)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .allowsHitTesting(false)
+
           controlsView
-            .padding(.horizontal, 16)
-            .padding(.bottom, 14)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.bottom, DS.Spacing.lg)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
@@ -231,7 +246,7 @@ struct ContentView: View {
       .onHover { hovering in
         isHoveringFullscreenControlsRegion = hovering
       }
-      .animation(.easeInOut(duration: 0.16), value: isHoveringFullscreenControlsRegion)
+      .animation(DS.Anim.controlReveal, value: isHoveringFullscreenControlsRegion)
     }
   }
 
@@ -246,9 +261,13 @@ struct ContentView: View {
         .font(.system(size: 24, weight: .semibold, design: .rounded))
         .foregroundStyle(.white)
         .multilineTextAlignment(.center)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, 10)
-        .background(.black.opacity(0.68), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous))
+        .overlay {
+          RoundedRectangle(cornerRadius: DS.Radii.card, style: .continuous)
+            .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
+        }
         .padding(.horizontal, 28)
         .padding(.bottom, 26)
         .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 2)
@@ -256,151 +275,199 @@ struct ContentView: View {
   }
 
   private var emptyStateView: some View {
-    VStack(spacing: 12) {
-      Image(systemName: "play.square.stack.fill")
-        .resizable()
-        .scaledToFit()
-        .frame(width: 54, height: 54)
-        .foregroundStyle(.white.opacity(0.8))
+    VStack(spacing: DS.Spacing.lg) {
+      ZStack {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+          .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+          .foregroundStyle(.white.opacity(0.2))
+          .frame(width: 80, height: 80)
+
+        Image(systemName: "play.square.stack.fill")
+          .resizable()
+          .scaledToFit()
+          .frame(width: 40, height: 40)
+          .foregroundStyle(
+            LinearGradient(
+              colors: [.white.opacity(0.9), .white.opacity(0.5)],
+              startPoint: .top,
+              endPoint: .bottom
+            )
+          )
+      }
 
       Text("JustPlay")
-        .font(.title3.weight(.semibold))
+        .font(.system(size: 22, weight: .semibold, design: .rounded))
         .foregroundStyle(.white)
 
       Text(viewModel.statusMessage)
         .font(.subheadline)
-        .foregroundStyle(.white.opacity(0.7))
+        .foregroundStyle(DS.Colors.textSecondary)
         .multilineTextAlignment(.center)
 
-      Button("Open Video...") {
+      Button {
         viewModel.openPanel()
+      } label: {
+        Text("Open Video...")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 20)
+          .padding(.vertical, DS.Spacing.md)
+          .background(.white.opacity(0.12), in: Capsule())
+          .overlay {
+            Capsule()
+              .stroke(.white.opacity(0.15), lineWidth: DS.hairline)
+          }
       }
-      .buttonStyle(.borderedProminent)
+      .buttonStyle(.plain)
     }
     .padding(.horizontal, 28)
     .padding(.vertical, 24)
-    .background(.black.opacity(0.52), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radii.player, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: DS.Radii.player, style: .continuous)
+        .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
+    }
   }
 
   private var controlsView: some View {
     let hasActiveMedia = viewModel.currentURL != nil
 
-    return HStack(spacing: 8) {
-      Button(action: viewModel.togglePlayPause) {
-        Image(systemName: displayedIsPlaying ? "pause.fill" : "play.fill")
-      }
-      .buttonStyle(.borderedProminent)
-      .keyboardShortcut(.space, modifiers: [])
-      .disabled(!hasActiveMedia)
+    return HStack(spacing: DS.Spacing.lg) {
+      // Transport cluster (skip back, play/pause, skip forward)
+      HStack(spacing: DS.Spacing.sm) {
+        Button(action: viewModel.skipBackward) {
+          Image(systemName: "gobackward.10")
+            .font(.system(size: 13, weight: .semibold))
+            .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasActiveMedia)
 
-      Button(action: viewModel.skipBackward) {
-        Image(systemName: "gobackward.10")
-      }
-      .disabled(!hasActiveMedia)
+        Button(action: viewModel.togglePlayPause) {
+          Image(systemName: displayedIsPlaying ? "pause.fill" : "play.fill")
+            .font(.system(size: 15, weight: .semibold))
+            .frame(width: 36, height: 36)
+            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radii.button, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.space, modifiers: [])
+        .disabled(!hasActiveMedia)
 
-      Button(action: viewModel.skipForward) {
-        Image(systemName: "goforward.10")
+        Button(action: viewModel.skipForward) {
+          Image(systemName: "goforward.10")
+            .font(.system(size: 13, weight: .semibold))
+            .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasActiveMedia)
       }
-      .disabled(!hasActiveMedia)
 
-      HStack(spacing: 8) {
+      HStack(spacing: DS.Spacing.md) {
         Text(displayedCurrentTime.playbackText)
-          .font(.system(.footnote, design: .monospaced))
-          .foregroundStyle(.primary)
+          .font(.system(size: 11, weight: .medium, design: .monospaced))
+          .foregroundStyle(.white.opacity(0.85))
           .frame(width: 52, alignment: .leading)
 
         seekBar
 
         Text(viewModel.playbackState.duration.playbackText)
-          .font(.system(.footnote, design: .monospaced))
-          .foregroundStyle(.primary)
+          .font(.system(size: 11, weight: .medium, design: .monospaced))
+          .foregroundStyle(DS.Colors.textSecondary)
           .frame(width: 52, alignment: .trailing)
       }
       .frame(maxWidth: .infinity)
 
-      Button {
-        isVolumePopoverPresented.toggle()
-      } label: {
-        Image(systemName: "speaker.wave.2.fill")
-      }
-      .buttonStyle(.bordered)
-      .help("Volume")
-      .popover(isPresented: $isVolumePopoverPresented, arrowEdge: .top) {
-        volumePopoverContent
-      }
+      HStack(spacing: DS.Spacing.sm) {
+        Button {
+          isVolumePopoverPresented.toggle()
+        } label: {
+          Image(systemName: "speaker.wave.2.fill")
+            .font(.system(size: 12))
+        }
+        .buttonStyle(.borderless)
+        .help("Volume")
+        .popover(isPresented: $isVolumePopoverPresented, arrowEdge: .top) {
+          volumePopoverContent
+        }
 
-      Menu {
-        ForEach(playbackRateOptions, id: \.self) { rate in
-          Button {
-            viewModel.playbackRate = rate
-          } label: {
-            HStack(spacing: 8) {
-              Text(playbackRateLabel(for: rate))
+        Menu {
+          ForEach(playbackRateOptions, id: \.self) { rate in
+            Button {
+              viewModel.playbackRate = rate
+            } label: {
+              HStack(spacing: 8) {
+                Text(playbackRateLabel(for: rate))
 
-              Spacer(minLength: 8)
+                Spacer(minLength: 8)
 
-              if isSelectedPlaybackRate(rate) {
-                Image(systemName: "checkmark")
+                if isSelectedPlaybackRate(rate) {
+                  Image(systemName: "checkmark")
+                }
               }
+              .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
           }
+        } label: {
+          Text(playbackRateLabel(for: viewModel.playbackRate))
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .frame(minWidth: 38)
         }
-      } label: {
-        Text(playbackRateLabel(for: viewModel.playbackRate))
-          .font(.system(.footnote, design: .monospaced))
-          .frame(minWidth: 42)
-      }
-      .buttonStyle(.bordered)
-      .help("Playback Speed")
-      .disabled(!hasActiveMedia)
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .help("Playback Speed")
+        .disabled(!hasActiveMedia)
 
-      Menu {
-        Button("Open...") {
-          viewModel.openPanel()
-        }
-
-        Divider()
-
-        Button(isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
-          isSidebarVisible.toggle()
-        }
-        .keyboardShortcut("b", modifiers: .command)
-
-        Divider()
-
-        Button("Add Subtitle...") {
-          viewModel.openSubtitlePanel()
-        }
-
-        if viewModel.hasSubtitleTrack {
-          Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
-            viewModel.subtitlesEnabled.toggle()
+        Menu {
+          Button("Open...") {
+            viewModel.openPanel()
           }
 
-          Button("Remove Subtitle") {
-            viewModel.removeSubtitleTrack()
-          }
-        }
-      } label: {
-        Image(systemName: "ellipsis.circle")
-      }
-      .buttonStyle(.bordered)
-      .help("More Actions")
+          Divider()
 
-      Button(action: toggleFullscreen) {
-        Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+          Button(isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+            isSidebarVisible.toggle()
+          }
+          .keyboardShortcut("b", modifiers: .command)
+
+          Divider()
+
+          Button("Add Subtitle...") {
+            viewModel.openSubtitlePanel()
+          }
+
+          if viewModel.hasSubtitleTrack {
+            Button(viewModel.subtitlesEnabled ? "Hide Subtitles" : "Show Subtitles") {
+              viewModel.subtitlesEnabled.toggle()
+            }
+
+            Button("Remove Subtitle") {
+              viewModel.removeSubtitleTrack()
+            }
+          }
+        } label: {
+          Image(systemName: "ellipsis.circle")
+            .font(.system(size: 12))
+        }
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .help("More Actions")
+
+        Button(action: toggleFullscreen) {
+          Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 12))
+        }
+        .buttonStyle(.borderless)
+        .help(isFullscreen ? "Exit Full Screen" : "Enter Full Screen")
       }
-      .buttonStyle(.bordered)
-      .help(isFullscreen ? "Exit Full Screen" : "Enter Full Screen")
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .padding(.horizontal, DS.Spacing.lg)
+    .padding(.vertical, DS.Spacing.md)
+    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radii.controlBar, style: .continuous))
     .overlay {
-      RoundedRectangle(cornerRadius: 14, style: .continuous)
-        .stroke(.white.opacity(0.12), lineWidth: 1)
+      RoundedRectangle(cornerRadius: DS.Radii.controlBar, style: .continuous)
+        .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
     }
+    .dsModifier(DS.Shadows.controlBar())
   }
 
   private var volumePopoverContent: some View {
@@ -443,19 +510,19 @@ struct ContentView: View {
   }
 
   private var headerView: some View {
-    HStack(spacing: 12) {
-      Text(viewModel.currentURL?.lastPathComponent ?? "Open a local video to start playback")
-        .font(.subheadline)
+    HStack(spacing: DS.Spacing.md) {
+      Image(systemName: "film")
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(DS.Colors.textSecondary)
+
+      Text(viewModel.currentURL?.lastPathComponent ?? "No video loaded")
+        .font(.system(size: 12, weight: .medium))
         .foregroundStyle(.secondary)
         .lineLimit(1)
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 14, style: .continuous)
-        .stroke(.white.opacity(0.12), lineWidth: 1)
-    }
+    .padding(.horizontal, DS.Spacing.lg)
+    .padding(.vertical, DS.Spacing.md)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var backgroundLayer: some View {
@@ -465,8 +532,8 @@ struct ContentView: View {
       } else {
         LinearGradient(
           colors: [
-            Color(red: 0.07, green: 0.1, blue: 0.14),
-            Color(red: 0.11, green: 0.15, blue: 0.2)
+            Color(red: 0.06, green: 0.08, blue: 0.12),
+            Color(red: 0.10, green: 0.13, blue: 0.18)
           ],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
@@ -477,7 +544,11 @@ struct ContentView: View {
   }
 
   private var seekBar: some View {
-    GeometryReader { geometry in
+    let seekBarExpanded = isSeekBarHovered || isSeeking
+    let trackHeight: CGFloat = seekBarExpanded ? 6 : 3
+    let thumbVisible = seekBarExpanded
+
+    return GeometryReader { geometry in
       let width = max(geometry.size.width, 1)
       let duration = max(viewModel.playbackState.duration, 0)
       let currentTime = displayedCurrentTime
@@ -488,31 +559,41 @@ struct ContentView: View {
       let previewCenterX = min(max(markerX, previewPadding), width - previewPadding)
 
       ZStack(alignment: .leading) {
-        Capsule(style: .continuous)
-          .fill(.white.opacity(0.2))
-          .frame(height: 4)
+        RoundedRectangle(cornerRadius: trackHeight / 2, style: .continuous)
+          .fill(DS.Colors.seekTrack)
+          .frame(height: trackHeight)
 
-        Capsule(style: .continuous)
-          .fill(.white.opacity(0.88))
-          .frame(width: max(width * playedRatio, 4), height: 4)
+        RoundedRectangle(cornerRadius: trackHeight / 2, style: .continuous)
+          .fill(DS.Colors.seekFill)
+          .frame(width: max(width * playedRatio, trackHeight), height: trackHeight)
 
         Circle()
-          .fill(.white)
-          .frame(width: 10, height: 10)
-          .offset(x: max(markerX - 5, 0))
+          .fill(DS.Colors.seekThumb)
+          .frame(width: 12, height: 12)
+          .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+          .offset(x: max(markerX - 6, 0))
+          .scaleEffect(thumbVisible ? 1 : 0.01)
+          .opacity(thumbVisible ? 1 : 0)
 
         if let previewTime {
           Text(previewTime.playbackText)
             .font(.system(size: 11, weight: .semibold, design: .monospaced))
             .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.xs)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radii.seekPreview, style: .continuous))
+            .overlay {
+              RoundedRectangle(cornerRadius: DS.Radii.seekPreview, style: .continuous)
+                .stroke(DS.Colors.borderSubtle, lineWidth: DS.hairline)
+            }
             .position(x: previewCenterX, y: -8)
         }
       }
       .frame(height: 22)
       .contentShape(Rectangle())
+      .onHover { hovering in
+        isSeekBarHovered = hovering
+      }
       .gesture(
         DragGesture(minimumDistance: 0)
           .onChanged { value in
@@ -540,6 +621,7 @@ struct ContentView: View {
             endSeekingSession()
           }
       )
+      .animation(DS.Anim.seekExpand, value: seekBarExpanded)
       .opacity(duration > 0 ? 1 : 0.5)
     }
     .frame(maxWidth: .infinity)
@@ -591,12 +673,17 @@ struct ContentView: View {
 
   private var dropIndicator: some View {
     Label("Drop to Open", systemImage: "arrow.down.doc")
-      .font(.headline)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 8)
+      .font(.subheadline.weight(.semibold))
+      .padding(.horizontal, DS.Spacing.lg)
+      .padding(.vertical, DS.Spacing.md)
       .foregroundStyle(.white)
-      .background(.blue.opacity(0.8), in: Capsule())
-      .padding(14)
+      .background(.ultraThinMaterial, in: Capsule())
+      .overlay {
+        Capsule()
+          .stroke(Color.accentColor.opacity(0.6), lineWidth: 1)
+      }
+      .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 2)
+      .padding(DS.Spacing.lg)
   }
 
   private func handleDrop(providers: [NSItemProvider]) -> Bool {
